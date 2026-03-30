@@ -5,3 +5,6 @@ argparse
 transformers
 datasets
 anthropic
+accelerate
+bitsandbytes
+replicate
