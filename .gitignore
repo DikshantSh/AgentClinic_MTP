@@ -3,5 +3,6 @@ results/*
 *_results*.py
 *.out
 test_venv
+
 .env
 .env.local

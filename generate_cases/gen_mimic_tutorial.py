@@ -2,7 +2,7 @@ import os, csv
 import json, openai, re, time
 
 # Set OpenAI key
-openai.api_key = "insert-openai-api-key-here"
+openai.api_key = os.environ.get("OPENAI_API_KEY", "insert-openai-api-key-here")
 
 # First install the MIMIC-IV dataset from 
 # https://physionet.org/content/mimiciv/2.2/

@@ -2,7 +2,7 @@ import json, openai, re, time
 from datasets import load_dataset
 
 # Set OpenAI key
-openai.api_key = "insert-openai-api-key-here"
+openai.api_key = os.environ.get("OPENAI_API_KEY", "insert-openai-api-key-here")
 
 # Extract the testing set for the MedQA dataset
 medqa_test_set = load_dataset("bigbio/med_qa")["test"]

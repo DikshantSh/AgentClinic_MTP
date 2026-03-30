@@ -397,7 +397,7 @@ def main(api_key, replicate_api_key, doctor_llm, patient_llm, measurement_llm, m
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--openai_api_key', type=str, default="YOUR_KEY")
+    parser.add_argument('--openai_api_key', type=str, default=os.environ.get("OPENAI_API_KEY", ""))
     parser.add_argument('--replicate_api_key', type=str, default="")
     parser.add_argument('--doctor_llm', type=str, default='gpt3.5')
     parser.add_argument('--patient_llm', type=str, default='gpt3.5')
