@@ -24,7 +24,14 @@
 set -uo pipefail
 
 EVENT_LOG="logs/watchdog_events.txt"
+NTFY_TOPIC="${NTFY_TOPIC:-agentclinic_dikshant_mtp}"
 mkdir -p logs
+
+# ---- Helper: Send mobile notification via ntfy.sh ----
+notify() {
+    local msg="$1"
+    curl -s -d "$msg" "ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true
+}
 
 # ---- Helper: Find a GPU with at least $1 MiB free ----
 find_free_gpu() {
@@ -58,16 +65,27 @@ log_event() {
         echo "Command:      ${cmd}"
         echo "------------------------------------------------"
     } >> "$EVENT_LOG"
+    notify "🚀 Launching '${name}' on GPU ${gpu} (${vram} MiB free) at ${ts}"
 }
+
 
 # ---- Helper: Launch a single experiment in background ----
 launch_experiment() {
     local name=$1 gpu=$2 cmd=$3 logdir="logs"
+    local logfile="${logdir}/${name}.log"
+
+    # Backup existing log if present
+    if [ -f "$logfile" ]; then
+        local ts
+        ts=$(date -r "$logfile" "+%Y%m%d_%H%M%S")
+        mv "$logfile" "${logfile%.log}_${ts}.log"
+        echo "  [Backup] Renamed old log to ${logfile%.log}_${ts}.log"
+    fi
 
     echo "[$(date)] ✅ Launching '${name}' on GPU ${gpu}"
-    CUDA_VISIBLE_DEVICES=$gpu bash -c "$cmd" > "${logdir}/${name}.log" 2>&1 &
+    CUDA_VISIBLE_DEVICES=$gpu bash -c "$cmd" > "$logfile" 2>&1 &
     local pid=$!
-    echo "  PID: ${pid} | Log: ${logdir}/${name}.log"
+    echo "  PID: ${pid} | Log: ${logfile}"
     echo "$pid"
 }
 

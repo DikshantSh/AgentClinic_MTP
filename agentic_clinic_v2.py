@@ -31,6 +31,7 @@ import replicate
 import os
 import datetime
 import torch
+import subprocess
 from typing import TypedDict, List, Optional, Annotated
 from operator import add as _list_concat  # for LangGraph reducer
 from transformers import (
@@ -283,6 +284,18 @@ def query_model(model_str, prompt, system_prompt, model_class,
             continue
 
     raise RuntimeError(f"Max retries ({tries}) exceeded for model {model_str}")
+
+
+def send_notification(topic, message):
+    """Sends a push notification to phone via ntfy.sh"""
+    if not topic:
+        return
+    try:
+        # Use curl directly to avoid new dependencies
+        cmd = ["curl", "-s", "-d", message, f"ntfy.sh/{topic}"]
+        subprocess.run(cmd, timeout=5)
+    except Exception as e:
+        print(f"[Warning] Failed to send notification: {e}")
 
 
 # =============================================================================
@@ -907,6 +920,7 @@ def main(
     moderator_model_id: Optional[str] = None,
     quantize: bool = True,
     output_file: Optional[str] = None,
+    notify_topic: Optional[str] = None,
 ):
     """
     Main experiment execution pipeline.
@@ -995,7 +1009,12 @@ def main(
         else range(0, min(num_scenarios or 1, scenario_loader.num_scenarios))
     )
 
-    for _scenario_id in scenario_ids:
+    for i, _scenario_id in enumerate(scenario_ids):
+        # Progress Notification every 10 scenarios
+        if i > 0 and i % 10 == 0:
+            msg = f"Experiment Progress: {i}/{len(scenario_ids)} scenarios done. (Model: {doctor_model_id.split('/')[-1]})"
+            send_notification(notify_topic, msg)
+
         scenario_start_time = time.time()
         print(f"\n{'='*60}")
         print(f"SCENARIO {_scenario_id} / {len(scenario_ids)} | Bias: {doctor_bias}")
@@ -1270,6 +1289,11 @@ def main(
     print(f"  Results saved to: {output_file}")
     print(f"{'='*60}")
 
+    # Final Notification
+    if notify_topic:
+        final_msg = f"EXP COMPLETE: {doctor_model_id.split('/')[-1]} finished {total_presents} scenarios. Accuracy: {final_accuracy}%"
+        send_notification(notify_topic, final_msg)
+
 
 # =============================================================================
 # SECTION 9: CLI ENTRY POINT
@@ -1362,6 +1386,8 @@ Examples:
     # --- Output ---
     parser.add_argument('--output_file', type=str, default=None,
                         help='Path for JSONL results output')
+    parser.add_argument('--notify_topic', type=str, default=None,
+                        help='ntfy.sh topic for mobile notifications')
 
     args = parser.parse_args()
 
@@ -1383,4 +1409,5 @@ Examples:
         moderator_model_id=args.moderator_model_id,
         quantize=not args.no_quantize,
         output_file=args.output_file,
+        notify_topic=args.notify_topic,
     )

@@ -18,6 +18,21 @@ DOCTOR_LLM="HF_mistralai/Mixtral-8x7B-v0.1"
 PATIENT_LLM="HF_mistralai/Mixtral-8x7B-v0.1"
 MEAS_LLM="HF_mistralai/Mixtral-8x7B-v0.1"
 MOD_LLM="HF_mistralai/Mixtral-8x7B-v0.1"
+NTFY_TOPIC="agentclinic_dikshant_mtp"
+
+# ---- Helper: Send mobile notification ----
+notify() { curl -s -d "$1" "ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true; }
+
+# ---- Helper: Backup existing log file (never overwrite old logs) ----
+backup_log() {
+    local logfile="$1"
+    if [ -f "$logfile" ]; then
+        local ts
+        ts=$(date -r "$logfile" "+%Y%m%d_%H%M%S")
+        mv "$logfile" "${logfile%.log}_${ts}.log"
+        echo "  [Backup] Renamed old log to ${logfile%.log}_${ts}.log"
+    fi
+}
 
 mkdir -p "${LOG_DIR}" results
 
@@ -34,6 +49,7 @@ echo "============================================"
 echo ""
 echo "[E0] SMOKE TEST: Single Mistral-7B for all agents (3 scenarios, 5 turns)"
 echo "  Started at: $(date)"
+backup_log "${LOG_DIR}/e0_smoke_test.log"
 python "${SCRIPT}" \
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${DOCTOR_LLM}" \
@@ -45,6 +61,7 @@ python "${SCRIPT}" \
     --total_inferences 5 \
     --doctor_bias None \
     --no_quantize \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e0_smoke_test.log"
 echo "  [E0] Completed at: $(date)"
 echo ""
@@ -58,6 +75,7 @@ echo ""
 echo "[E1] BASELINE: Mistral-7B (homogeneous, no bias)"
 echo "  Started at: $(date)"
 python "${SCRIPT}" \
+backup_log "${LOG_DIR}/e1_baseline.log"
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${PATIENT_LLM}" \
     --measurement_llm "${MEAS_LLM}" \
@@ -67,8 +85,10 @@ python "${SCRIPT}" \
     --num_scenarios "${SCENARIOS}" \
     --total_inferences "${INFERENCES}" \
     --doctor_bias None \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e1_baseline.log"
 echo "  [E1] Completed at: $(date)"
+notify "✅ E1 BASELINE completed at $(date)"
 
 # ============================================================================
 # E2: HETEROGENEOUS — JSL-Med Doctor, Mistral Patient
@@ -77,6 +97,7 @@ echo ""
 echo "[E2] HETEROGENEOUS: JSL-MedMistral-7B Doctor"
 echo "  Started at: $(date)"
 python "${SCRIPT}" \
+backup_log "${LOG_DIR}/e2_jsl_med.log"
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${PATIENT_LLM}" \
     --measurement_llm "${MEAS_LLM}" \
@@ -86,8 +107,10 @@ python "${SCRIPT}" \
     --num_scenarios "${SCENARIOS}" \
     --total_inferences "${INFERENCES}" \
     --doctor_bias None \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e2_jsl_med.log"
 echo "  [E2] Completed at: $(date)"
+notify "✅ E2 JSL-Med completed at $(date)"
 
 # ============================================================================
 # E3: HETEROGENEOUS — Llama-3.1-8B Doctor, Mistral Patient
@@ -96,6 +119,7 @@ echo ""
 echo "[E3] HETEROGENEOUS: Llama-3.1-8B Doctor"
 echo "  Started at: $(date)"
 python "${SCRIPT}" \
+backup_log "${LOG_DIR}/e3_llama3.log"
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${PATIENT_LLM}" \
     --measurement_llm "${MEAS_LLM}" \
@@ -105,8 +129,10 @@ python "${SCRIPT}" \
     --num_scenarios "${SCENARIOS}" \
     --total_inferences "${INFERENCES}" \
     --doctor_bias None \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e3_llama3.log"
 echo "  [E3] Completed at: $(date)"
+notify "✅ E3 Llama-3.1-8B completed at $(date)"
 
 # ============================================================================
 # E4: BIAS — Recency Bias on Best Doctor Model
@@ -115,6 +141,7 @@ echo ""
 echo "[E4] BIAS: Recency bias (JSL-Med Doctor)"
 echo "  Started at: $(date)"
 python "${SCRIPT}" \
+backup_log "${LOG_DIR}/e4_recency.log"
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${PATIENT_LLM}" \
     --measurement_llm "${MEAS_LLM}" \
@@ -124,8 +151,10 @@ python "${SCRIPT}" \
     --num_scenarios "${SCENARIOS}" \
     --total_inferences "${INFERENCES}" \
     --doctor_bias recency \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e4_recency.log"
 echo "  [E4] Completed at: $(date)"
+notify "✅ E4 Recency Bias completed at $(date)"
 
 # ============================================================================
 # E5: BIAS — Confirmation Bias on Best Doctor Model
@@ -134,6 +163,7 @@ echo ""
 echo "[E5] BIAS: Confirmation bias (JSL-Med Doctor)"
 echo "  Started at: $(date)"
 python "${SCRIPT}" \
+backup_log "${LOG_DIR}/e5_confirmation.log"
     --doctor_llm "${DOCTOR_LLM}" \
     --patient_llm "${PATIENT_LLM}" \
     --measurement_llm "${MEAS_LLM}" \
@@ -143,8 +173,10 @@ python "${SCRIPT}" \
     --num_scenarios "${SCENARIOS}" \
     --total_inferences "${INFERENCES}" \
     --doctor_bias confirmation \
+    --notify_topic "${NTFY_TOPIC}" \
     2>&1 | tee "${LOG_DIR}/e5_confirmation.log"
 echo "  [E5] Completed at: $(date)"
+notify "✅ E5 Confirmation Bias completed at $(date)"
 
 # ============================================================================
 # SUMMARY
@@ -159,3 +191,4 @@ echo "============================================"
 echo ""
 echo "Results files:"
 ls -la results/*.jsonl 2>/dev/null || echo "  (no results files found)"
+notify "🏁 ALL 5 EXPERIMENTS COMPLETE. Check results/ directory."
