@@ -1,10 +1,30 @@
-regex==2023.12.25
+# ============================================
+# AgentClinic v2.1 — Dependencies
+# ============================================
+
+# Core ML
+torch>=2.0.0
+transformers>=4.40.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
+sentencepiece
+protobuf
+
+# Agent Orchestration
+langgraph>=0.0.40
+langchain-core>=0.2.0
+
+# API Backends
 openai==0.28.0
-replicate==0.23.1
+anthropic>=0.25.0
+replicate>=0.23.1
+
+# CLI & Utilities
 argparse
-transformers
-datasets
-anthropic
-accelerate
-bitsandbytes
-replicate
+regex==2023.12.25
+
+# Analytics (for results processing)
+scipy>=1.10.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+pandas>=2.0.0
