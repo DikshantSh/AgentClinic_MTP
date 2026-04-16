@@ -308,6 +308,7 @@ class LocalServerLLMWrapper:
             model_id: HuggingFace model identifier
             quantize: If True, load with 4-bit NF4 quantization
         """
+        quantize=False
         print(f"[LocalServerLLMWrapper] Loading model: {model_id} (quantize={quantize})")
         load_start = time.time()
 
@@ -332,8 +333,9 @@ class LocalServerLLMWrapper:
 
         # Attempt Flash Attention 2 (silently fall back if not available)
         try:
+            import flash_attn
             load_kwargs["attn_implementation"] = "flash_attention_2"
-        except Exception:
+        except ImportError:
             pass  # Fall back to default attention
 
         self.model = AutoModelForCausalLM.from_pretrained(model_id, **load_kwargs)

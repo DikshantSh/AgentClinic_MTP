@@ -29,6 +29,29 @@ echo "Max turns per scenario: ${INFERENCES}"
 echo "============================================"
 
 # ============================================================================
+# E0: SMOKE TEST — Single model for ALL agents, 3 scenarios only
+# ============================================================================
+echo ""
+echo "[E0] SMOKE TEST: Single Mistral-7B for all agents (3 scenarios, 5 turns)"
+echo "  Started at: $(date)"
+python "${SCRIPT}" \
+    --doctor_llm "${DOCTOR_LLM}" \
+    --patient_llm "${DOCTOR_LLM}" \
+    --measurement_llm "${DOCTOR_LLM}" \
+    --moderator_llm "${DOCTOR_LLM}" \
+    --doctor_model_id "mistralai/Mistral-7B-Instruct-v0.2" \
+    --patient_model_id "mistralai/Mistral-7B-Instruct-v0.2" \
+    --num_scenarios 3 \
+    --total_inferences 5 \
+    --doctor_bias None \
+    --no_quantize \
+    2>&1 | tee "${LOG_DIR}/e0_smoke_test.log"
+echo "  [E0] Completed at: $(date)"
+echo ""
+echo "  >>> E0 PASSED. If you see results above, the pipeline is working. <<<"
+echo ""
+
+# ============================================================================
 # E1: BASELINE — Homogeneous Mistral-7B, No Bias
 # ============================================================================
 echo ""

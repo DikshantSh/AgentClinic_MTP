@@ -1,0 +1,17 @@
+# ============================================================================
+# GPU Experiment Queue — One experiment per line
+# ============================================================================
+# Format: EXPERIMENT_NAME | VRAM_NEEDED_MIB | COMMAND
+# Lines starting with # are ignored. Lines starting with DONE: are skipped.
+# ============================================================================
+
+# E1 is already running via the current run_experiments.sh, so mark it done:
+DONE: e1_baseline | 15000 | python agentic_clinic_v2.py --doctor_llm HF_mistralai/Mixtral-8x7B-v0.1 --patient_llm HF_mistralai/Mixtral-8x7B-v0.1 --measurement_llm HF_mistralai/Mixtral-8x7B-v0.1 --moderator_llm HF_mistralai/Mixtral-8x7B-v0.1 --doctor_model_id mistralai/Mistral-7B-Instruct-v0.2 --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 --num_scenarios 107 --total_inferences 10 --doctor_bias None --no_quantize
+
+e2_jsl_med | 15000 | python agentic_clinic_v2.py --doctor_llm HF_mistralai/Mixtral-8x7B-v0.1 --patient_llm HF_mistralai/Mixtral-8x7B-v0.1 --measurement_llm HF_mistralai/Mixtral-8x7B-v0.1 --moderator_llm HF_mistralai/Mixtral-8x7B-v0.1 --doctor_model_id johnsnowlabs/JSL-MedMistral-7B-v2.2 --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 --num_scenarios 107 --total_inferences 10 --doctor_bias None --no_quantize
+
+e3_llama3 | 15000 | python agentic_clinic_v2.py --doctor_llm HF_mistralai/Mixtral-8x7B-v0.1 --patient_llm HF_mistralai/Mixtral-8x7B-v0.1 --measurement_llm HF_mistralai/Mixtral-8x7B-v0.1 --moderator_llm HF_mistralai/Mixtral-8x7B-v0.1 --doctor_model_id meta-llama/Llama-3.1-8B-Instruct --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 --num_scenarios 107 --total_inferences 10 --doctor_bias None --no_quantize
+
+e4_recency | 15000 | python agentic_clinic_v2.py --doctor_llm HF_mistralai/Mixtral-8x7B-v0.1 --patient_llm HF_mistralai/Mixtral-8x7B-v0.1 --measurement_llm HF_mistralai/Mixtral-8x7B-v0.1 --moderator_llm HF_mistralai/Mixtral-8x7B-v0.1 --doctor_model_id johnsnowlabs/JSL-MedMistral-7B-v2.2 --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 --num_scenarios 107 --total_inferences 10 --doctor_bias recency --no_quantize
+
+e5_confirmation | 15000 | python agentic_clinic_v2.py --doctor_llm HF_mistralai/Mixtral-8x7B-v0.1 --patient_llm HF_mistralai/Mixtral-8x7B-v0.1 --measurement_llm HF_mistralai/Mixtral-8x7B-v0.1 --moderator_llm HF_mistralai/Mixtral-8x7B-v0.1 --doctor_model_id johnsnowlabs/JSL-MedMistral-7B-v2.2 --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 --num_scenarios 107 --total_inferences 10 --doctor_bias confirmation --no_quantize
