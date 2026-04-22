@@ -1,0 +1,94 @@
+% Chapter Template
+
+\chapter{Literature Review}
+
+\label{Chapter 2} 
+
+\lhead{Chapter 2. \emph{Literature Review}}
+
+\section{Introduction}
+
+Artificial intelligence has increasingly influenced medical decision support, transitioning from rule-based systems to modern large language models (LLMs). Although LLMs achieve strong performance on medical question-answering tasks, real clinical reasoning involves significantly more complexity. Diagnostic workflows require multi-turn interaction, uncertainty handling, and iterative evidence acquisition—capabilities not captured by static benchmarks.  
+This chapter reviews prior work across three domains relevant to this project:  
+(1) medical QA datasets,  
+(2) dialogue-based clinical simulations, and  
+(3) bias in medical AI.  
+The goal is to identify research gaps that motivated the development of the custom multi-agent simulation framework used in this project.
+
+\section{Medical Question Answering and Reasoning Benchmarks}
+
+\subsection{Static QA Datasets}
+
+Widely used benchmarks such as MedQA, MedMCQA, PubMedQA, and BioASQ evaluate a model’s ability to answer well-formed medical questions. These datasets typically contain fully specified, self-contained prompts with complete symptom descriptions. While useful for assessing factual recall and guideline reasoning, they do not reflect the incomplete, ambiguous, and evolving nature of real patient encounters.
+
+Static QA formats assess \textit{knowledge retrieval}, but not the \textit{process} of clinical reasoning. They fail to test whether a model can ask clarifying questions, identify missing information, or formulate differentials iteratively. Thus, strong performance on QA does not guarantee competence in interactive diagnostic workflows.
+
+\subsection{Limitations of Single-Turn Evaluations}
+
+Single-turn benchmarks cannot evaluate:  
+\begin{itemize}
+    \item adaptive questioning,  
+    \item uncertainty management,  
+    \item selection of diagnostic tests,  
+    \item hypothesis revision, or  
+    \item multi-step clinical inference.
+\end{itemize}
+
+This creates a disconnect between benchmark performance and practical diagnostic capability. Models that excel at answering static questions may struggle when forced to reason over several turns while maintaining coherence and clinical consistency.
+
+\section{Dialogue-Based and Multi-Agent Clinical Simulations}
+
+\subsection{Early Dialogue Systems}
+
+Prior to modern LLMs, clinical dialogue systems relied on rule-based templates and decision trees. These systems offered deterministic behaviour but lacked the flexibility required to engage in natural, patient-specific conversations. They could not handle ambiguous statements, irregular phrasing, or unexpected conversational shifts.
+
+\subsection{Modern Multi-Agent Approaches}
+
+Recent research introduces multi-agent frameworks where LLMs assume roles such as clinician, patient, or evaluator. These frameworks enable multi-turn interactions and test-ordering behaviour. However, they still exhibit several limitations:
+\begin{itemize}
+    \item \textbf{Limited modularity}: agent behaviors are not easily customizable.
+    \item \textbf{Dependence on proprietary LLMs}: restricting reproducibility and experimentation.
+    \item \textbf{Minimal bias control}: lacking tools to inject realistic behavioural distortions.
+    \item \textbf{Opaque pipelines}: prompting strategies and decision flows are difficult to modify.
+\end{itemize}
+
+As such, these systems function more as benchmarks than extensible research tools. They provide limited flexibility for deeper exploration of model-specific behaviour, especially for open-source LLMs.
+
+\section{Bias and Fairness in Medical AI}
+
+\subsection{Implicit Bias}
+
+Implicit demographic biases—related to race, gender, socioeconomic status, age, or cultural background—are well documented in healthcare literature. Since LLMs are trained on large text corpora containing such historical patterns, they are susceptible to reproducing biased or inequitable diagnostic behaviors.
+
+\subsection{Cognitive Bias}
+
+Cognitive biases such as anchoring, confirmation bias, recency effects, and overconfidence are known to shape human diagnostic reasoning. LLMs may display similar tendencies when early conversational cues disproportionately influence later reasoning steps. Examining these distortions requires simulation environments capable of systematically controlling behavioural inputs.
+
+\subsection{Lack of Bias Modeling Tools}
+
+Most existing clinical AI benchmarks provide no structured mechanism for injecting bias into patient responses or clinician reasoning paths. This restricts the ability to study fairness, robustness, and behavioural sensitivity under controlled distortions, motivating the development of the bias-injection modules used in this project.
+
+\section{Open-Source LLMs in Clinical Reasoning}
+
+Open-source LLMs such as Llama, Mixtral, and Qwen offer transparency and local deployability but present additional challenges, including:
+\begin{itemize}
+    \item shorter context windows,  
+    \item greater hallucination rates,  
+    \item fragile instruction-following,  
+    \item and sensitivity to prompt structure.
+\end{itemize}
+
+Many existing simulation frameworks assume reliable, high-bandwidth proprietary models and thus cannot be used directly with open-source systems without substantial engineering modifications. This motivates the need for modular, customizable pipelines that accommodate open-source constraints while supporting stable multi-turn interactions.
+
+\section{Summary of Research Gaps}
+
+The literature reveals several limitations in current medical AI evaluation methods:
+\begin{enumerate}
+    \item Static QA benchmarks do not emulate multi-step clinical reasoning.
+    \item Existing simulations lack modularity and transparency.
+    \item Bias modeling is either superficial or entirely absent.
+    \item Open-source LLMs require specialized architectural support.
+    \item Tools for analyzing diagnostic trajectories—not just final outcomes—are scarce.
+\end{enumerate}
+
+These gaps highlight the need for a flexible, extensible, and open-source–compatible simulation framework, motivating the architectural and methodological choices in this project.

@@ -1,0 +1,36 @@
+\chapter{Conclusion and Future Work}
+\label{Chapter8}
+\lhead{Chapter 8. \emph{Conclusion and Future Work}}
+
+\section{Conclusion}
+
+This thesis systematically evolved the evaluation of Large Language Models in clinical environments from static factual recall to dynamic, interactive, and trajectory-aware simulation. By developing \textbf{AgentClinic v2.1}, a highly robust and deterministic LangGraph state machine was engineered that operates entirely on local hardware via 4-bit NF4 double quantisation and heterogeneous multi-engine assignments, eliminating both the resource barrier and the Lexical Leakage vulnerability present in the initial framework.
+
+Through the innovation of the latent metacognitive reflection node, empirical evidence was obtained that forcing an LLM to ``think before it speaks'' yields immense performance benefits. The enhanced DCG architecture improved baseline accuracy from 44.0\% (initial framework) to \textbf{45.6\%} (AgentClinic v2.1), overcoming the penalty of removing Lexical Leakage. Furthermore, this thesis demonstrates that clinical AI must be evaluated on its \textit{process}---Diagnostic Stability, Test Rationality, and Information Efficiency---not solely on its terminal outcome.
+
+Empirical results demonstrate that while medical fine-tuning improves domain anchoring (E2: 54.2\%), instruction-aligned reasoning models are even more effective for interactive tasks (E3: 58.5\%). Critically, open-source models remain vulnerable to cognitive distortions---failing via erratic hypothesis thrashing under recency bias (E4: 38.1\%) and via premature diagnostic closure under confirmation bias (E5: 31.4\%). These findings establish that cognitive robustness must be treated as a primary design criterion, not an afterthought, in clinical LLM deployment.
+
+\section{Future Work: Advanced Fine-Tuning and Post-Training Alignment}
+
+While this thesis establishes a robust framework for evaluating multi-turn clinical reasoning, the next frontier involves actively mitigating the failure modes identified. Future research will leverage AgentClinic v2.1 not merely as an evaluator, but as an environment for advanced post-training alignment.
+
+\subsection{Process Reward Modelling via Direct Preference Optimisation}
+
+Current medical LLMs are typically trained via Supervised Fine-Tuning (SFT) on static QA pairs, optimised to predict the correct terminal diagnosis but lacking an understanding of the \textit{trajectory} required to reach it safely. Future work proposes applying Direct Preference Optimisation (DPO) to full clinical consultation trajectories. Instead of rewarding only the correct final outcome, a Process Reward Model will evaluate two distinct clinical paths: Path~A (premature hypothesis commitment with low Test Rationality) versus Path~B (systematic basic-before-advanced investigation with high Diagnostic Stability). By penalising Path~A and rewarding Path~B, DPO will adjust the LLM's behavioural policy to prefer methodical, guideline-concordant reasoning.
+
+\subsection{Reinforcement Learning from AI Feedback via Self-Play}
+
+Generating expert, human-annotated clinical dialogues for fine-tuning is prohibitively expensive. Future work proposes utilising the AgentClinic framework as a Reinforcement Learning (RL) environment. By allowing heterogeneous agents to simulate thousands of cases via self-play, synthetic training datasets can be automatically generated. The \texttt{ClinicalTrajectoryEvaluator} developed in this thesis will serve as the programmatic reward function: trajectories scoring highly on $DS$ and $TR$ will be archived, enabling iterative fine-tuning on the model's own successful reasoning paths---creating a self-improving clinical agent without human annotation overhead.
+
+\subsection{Task-Specific Dynamic LoRA Adapters}
+
+The catastrophic forgetting observed in narrowly fine-tuned models motivates a parameter-efficient solution: dynamic routing of task-specific Low-Rank Adaptation (LoRA) adapters at inference time, conditioned on the active LangGraph node:
+\begin{itemize}
+    \item A \textit{reasoning adapter} trained on medical differential diagnosis literature, activated exclusively during the \texttt{doctor\_reflection} node.
+    \item A \textit{dialogue adapter} trained on empathetic clinical communication, activated during the \texttt{doctor\_speaker} node.
+\end{itemize}
+This dual-adapter paradigm would maximise clinical accuracy during reasoning while preserving the linguistic fluidity required for realistic patient interaction, all without catastrophically modifying the base model's weights.
+
+\subsection{Multimodal Simulation Integration}
+
+The current \texttt{measurement\_node} operates exclusively in the text domain. Real-world diagnostics rely heavily on visual pattern recognition. Future iterations of AgentClinic must integrate state-of-the-art Vision-Language Models (VLMs) such as LLaVA-Med or Med-Gemini, enabling the Measurement Agent to return raw radiographic images, ECG waveforms, and pathology slides for direct interpretation by the Doctor agent---bridging the final gap toward complete, end-to-end clinical simulation fidelity.

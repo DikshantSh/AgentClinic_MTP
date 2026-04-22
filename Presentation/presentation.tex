@@ -1,0 +1,132 @@
+\documentclass[10pt, aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\title[AgentClinic v2.1]{Evaluating Large Language Models for Clinical Decision-Making Using AgentClinic}
+\author[Dikshant Sharma]{Dikshant Sharma \\ \vspace{0.2cm} \small{Under the guidance of Prof. Jiaul Hoque Paik}}
+\institute[IIT KGP]{Department of Artificial Intelligence \\ Indian Institute of Technology Kharagpur}
+\date{April 2026}
+
+\begin{document}
+
+% Slide 1: Title
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% Slide 2: Introduction & Motivation
+\begin{frame}{Introduction \& Motivation}
+    \begin{itemize}
+        \item \textbf{Limitations of Static Benchmarks:} Traditional medical datasets (USMLE, MedQA) assess factual recall using fully structured vignettes. They fail to evaluate dynamic hypothesis formation and adaptive questioning.
+        \item \textbf{Clinical Reality:} Real-world diagnosis is a sequential, multi-turn, and uncertainty-driven process.
+        \item \textbf{Objective:} Develop a highly modular multi-agent simulation framework (AgentClinic) to evaluate open-source LLMs under realistic, interactive clinical conditions.
+    \end{itemize}
+\end{frame}
+
+% Slide 3: Challenges in Multi-Agent Clinical Evaluation
+\begin{frame}{Challenges in Multi-Agent Clinical Evaluation}
+    \begin{itemize}
+        \item \textbf{Hardware Constraints:} Running multiple LLM agents (Doctor, Patient, Measurement) on local hardware poses severe VRAM bottlenecks.
+        \item \textbf{Lexical Leakage:} In a homogeneous model setup, the Doctor and Patient share identical weights and latent embedding manifolds. This allows the Doctor to mathematically infer the Patient's ground-truth symptoms, artificially inflating accuracy.
+        \item \textbf{Catastrophic Forgetting:} Medically fine-tuned datasets are narrow. Specialisation often degrades the model's broad conversational logic required to navigate interactive simulations.
+    \end{itemize}
+\end{frame}
+
+% Slide 4: AgentClinic v2.1 - Enhanced Architecture
+\begin{frame}{AgentClinic v2.1: Enhanced Architecture}
+    To address foundational flaws, the system was completely re-architected into AgentClinic v2.1:
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{LangGraph DCG Orchestration:} Replaced the non-deterministic while-loop with a Directed Cyclic Graph for strict, state-machine-driven agent routing.
+        \item \textbf{Heterogeneous Isolation:} Distinct, separate LLMs are used for Doctor vs. Patient to eradicate Lexical Leakage. 
+        \item \textbf{NF4 Double Quantisation:} Reduced 7B model footprint by 86\%, safely enabling multiple heterogeneous engines efficiently on a single H100 GPU (95.8 GB VRAM).
+    \end{itemize}
+\end{frame}
+
+% Slide 5: The Metacognitive Reflection Node
+\begin{frame}{The Metacognitive Reflection Node}
+    \textbf{Problem:} Generating complex diagnostics and bedside dialogue simultaneously causes hallucinations (reasoning-contaminated speech).
+    
+    \textbf{Solution:} The Latent Metacognitive Reflection (\texttt{doctor\_reflection}) node.
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item Forces the Doctor LLM to output a top-3 structured JSON differential diagnosis \textit{before} every spoken utterance.
+        \item Acts as a "think before you speak" latent Chain-of-Thought.
+        \item Stored in the simulation trajectory for evaluation but kept hidden from the patient-facing dialogue history.
+    \end{itemize}
+\end{frame}
+
+% Slide 6: System Flowchart
+\begin{frame}{System Flowchart}
+    \begin{figure}
+        \centering
+        \includegraphics[height=0.75\textheight]{../Final_Report/Pictures/Flowchart_pic.jpg}
+    \end{figure}
+\end{frame}
+
+% Slide 7: Process-Oriented Clinical Metrics
+\begin{frame}{Process-Oriented Clinical Metrics}
+    To evaluate reasoning trajectory over terminal outcomes, three new metrics were formally defined via the \texttt{ClinicalTrajectoryEvaluator}:
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{Diagnostic Stability (DS):} Measures hypothesis thrashing using average Jaccard similarity across sequential dialogue turns.
+        \item \textbf{Test Rationality (TR):} A compliance score marking whether non-invasive/basic exploratory tests were systematically prioritized over expensive/invasive ones.
+        \item \textbf{Information Efficiency (IE):} The ratio of unique differential diagnoses explored per conversational turn.
+    \end{itemize}
+\end{frame}
+
+% Slide 8: Experimental Diagnostic Accuracy
+\begin{frame}{Experimental Diagnostic Accuracy}
+    Total Scenarios: 107 MedQA derived cases \\
+    Maximum Turns: 10
+    \vspace{0.3cm}
+    \begin{table}
+        \centering
+        \begin{tabular}{llc}
+            \toprule
+            \textbf{Configuration (AgentClinic v2.1)} & \textbf{Bias} & \textbf{Accuracy (\%)} \\
+            \midrule
+            E1: Mistral-7B-v0.2 Baseline        & None & 45.6 \\
+            E2: JSL-MedMistral-7B               & None & 54.2 \\
+            E3: Llama-3.1-8B-Instruct           & None & 58.5 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    \vspace{0.1cm}
+    \textbf{Key Finding:} The reflection node logic entirely eclipsed the accuracy penalty of removing Lexical Leakage. Instruction-aligned reasoners (Llama-3.1) outperformed purely fine-tuned medical models.
+\end{frame}
+
+% Slide 9: Impact of Cognitive Biases
+\begin{frame}{The Safety Threat of Cognitive Biases}
+    Ecologically valid distortions were injected to test model robustness. Under JSL-MedMistral-7B:
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{Recency Bias (Accuracy = 38.1\%):} \\ Destroys Diagnostic Stability ($DS = 0.45$). Instructing the model with recent $k=5$ cases causes extreme hypothesis thrashing.
+        \item \textbf{Confirmation Bias (Accuracy = 31.4\%):} \\ Artificially maximizes stability ($DS = 0.88$). Priming an initially incorrect hypothesis causes \textit{premature diagnostic closure}, ignoring contradictory clinical evidence.
+    \end{itemize}
+    \vspace{0.2cm}
+    \textit{Conclusion:} Deeply misaligned models can appear "confidently consistent" while being systematically incorrect.
+\end{frame}
+
+% Slide 10: Conclusion & Future Work
+\begin{frame}{Conclusion \& Future Work}
+    \textbf{Conclusions:}
+    \begin{itemize}
+        \item Clinical AI must be evaluated on its \textit{process} (stability, rationality), not merely its terminal outcome.
+        \item Structured metacognition scaffolds dramatically improve logical trajectory alignment.
+        \item Open-source models remain highly vulnerable to systemic cognitive bias.
+    \end{itemize}
+    \vspace{0.3cm}
+    \textbf{Future Directions:}
+    \begin{itemize}
+        \item \textbf{Direct Preference Optimization (DPO):} Rewarding high DS/TR pathways.
+        \item \textbf{Self-Play AI Feedback:} Using the trajectory evaluator as a programmatic reward signal for automated synthetic fine-tuning.
+    \end{itemize}
+\end{frame}
+
+\end{document}

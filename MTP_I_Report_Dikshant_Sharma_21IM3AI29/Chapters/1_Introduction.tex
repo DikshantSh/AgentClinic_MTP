@@ -1,0 +1,77 @@
+% Chapter Template
+
+\chapter{Introduction} 
+
+\label{Chapter 1} 
+
+\lhead{Chapter 1. \emph{Introduction}}
+
+\section{Background and Motivation}
+
+The last decade has witnessed an extraordinary acceleration in the capabilities of large language models (LLMs), enabling them to tackle increasingly specialized reasoning tasks across diverse domains, including medicine. Modern LLMs exhibit a high degree of linguistic fluency, contextual awareness, and domain-specific recall, which collectively position them as promising computational tools in clinical decision support. Their ability to synthesize medical guidelines, recall diagnostic criteria, and articulate differential diagnoses has generated significant interest in their potential integration into real-world healthcare workflows.
+
+Nevertheless, it is widely recognized that clinical reasoning is fundamentally different from answering a static medical question. Real clinical encounters unfold as \textit{interactive}, \textit{sequential}, and \textit{uncertain} processes wherein physicians iteratively inquire, evaluate, hypothesize, refine, and re-evaluate based on newly acquired evidence. A typical clinical workflow consists of several cognitively demanding stages such as targeted history-taking, focused physical examination, ordering of laboratory and imaging tests, synthesis of multimodal evidence, and probabilistic reasoning under incomplete information. This iterative, exploratory process stands in sharp contrast to the rigid, one-shot question formats dominating traditional benchmarks such as MedQA or MedMCQA.
+
+These benchmark datasets, while valuable for assessing factual recall, fall short in assessing the \textit{procedural} and \textit{interactive} nature of clinical decision-making. They assume that the model already possesses all relevant patient information, thereby eliminating the need to ask clarifying questions, identify confounding factors, or selectively acquire evidence. As a result, such evaluations do not capture an LLM’s capacity for hypothesis formation, adaptive reasoning, or multi-turn dialogue management—capabilities that are essential to real clinical practice.
+
+This discrepancy between benchmark evaluation and realistic clinical workflows motivated the development of an \textbf{extended multi-agent simulation framework} engineered specifically to examine LLM behaviour in dynamic diagnostic scenarios. Although the general idea of simulating clinical interactions has appeared in prior academic work, those systems typically prioritize proprietary LLMs and lack the architectural flexibility needed to evaluate open-source models, which often exhibit higher sensitivity to prompt structure, shorter context windows, and greater instability in multi-turn interactions.
+
+The present project seeks to address this gap by constructing a tailored, extensible, and robust simulation environment capable of modelling nuanced doctor–patient interactions, multimodal diagnostic processes, and behavioural distortions caused by cognitive or implicit biases. The framework has been engineered from the ground up, leveraging conceptual insight from existing research but introducing several new computational abstractions, agent-specific behavioural layers, and stability mechanisms optimized for open-source LLM ecosystems.
+
+\section{Clinical Reasoning as an Interactive Process}
+
+Clinical reasoning is not a monolithic step but a sequence of interdependent cognitive operations that evolve over time. A physician begins with an incomplete understanding of the patient's condition and gradually forms and refines a mental model by integrating information acquired through purposeful interactions. This process involves:
+
+\begin{itemize}
+    \item \textbf{Hypothesis generation:} Enumerating plausible diagnoses from the initial presentation.
+    \item \textbf{Iterative information acquisition:} Asking clarifying questions and probing for relevant history.
+    \item \textbf{Evidence gathering:} Ordering laboratory investigations, imaging, and physical examinations.
+    \item \textbf{Hypothesis revision:} Updating or discarding diagnoses when new data contradict prior beliefs.
+    \item \textbf{Decision synthesis:} Integrating all validated evidence into a final diagnostic and treatment plan.
+\end{itemize}
+
+A credible evaluation framework must therefore capture not only the final diagnosis but the \textit{trajectory of reasoning} leading to that diagnosis. This requires simulating patient expressions, diagnostic test availability, behavioural modifiers, and communication patterns that influence how information is exchanged. Existing static benchmarks cannot replicate these dynamics, and even existing multi-agent clinical simulators offer limited control over agent-level behaviour, dialogue style, and bias modelling.
+
+These limitations inspired the design of a \textbf{custom extended clinical simulation platform}, integrating modular agent roles, controllable memory mechanisms, structured diagnostic tools, and a multi-layer prompting architecture. The resulting system facilitates a more realistic approximation of clinical reasoning and provides a fine-grained lens through which to observe the cognitive processes—successful or flawed—that emerge during LLM-driven diagnosis.
+
+\section{Need for Custom Engineering Beyond Existing Frameworks}
+
+Although multi-agent medical simulators exist in the literature, they are often rigidly structured, tightly bound to specific proprietary language models, or optimized for large-scale commercial APIs. Their assumptions about reliability, context-window size, and deterministic behaviour do not hold for many open-source LLMs, which may generate inconsistent responses, lose track of state across turns, or hallucinate examination procedures that are not part of the simulated environment.
+
+Engineering a new system was therefore essential to ensure:
+
+\begin{enumerate}
+    \item \textbf{Open-source compatibility:} Incorporating quantization-aware inference, context compression, and error-handling routines necessary to stabilize smaller or locally hosted models.
+    \item \textbf{Modular agent definitions:} Allowing each agent—doctor, patient, measurement subsystem, evaluator—to have independent behavioural templates and memory substrates.
+    \item \textbf{Flexible interaction orchestration:} A deterministic controller to regulate turn-taking, constrain message flow, and enforce simulation integrity.
+    \item \textbf{Bias modelling:} A structured bias-injection manifold enabling systematic study of cognitive and implicit biases such as anchoring, recency, mistrust, or information withholding.
+    \item \textbf{Evidence aggregation and structured test simulation:} Robust templates for vitals, imaging summaries, physical findings, and lab values that can be queried adaptively.
+\end{enumerate}
+
+Together, these engineering choices transform the environment from a simple benchmarking tool into a \textit{comprehensive experimental platform} capable of providing deeper insights into medical reasoning, behavioural stability, and fairness properties of LLMs.
+
+\section{Problem Statement}
+
+Despite notable progress in healthcare-focused LLM research, several persistent gaps remain:
+
+\begin{itemize}
+    \item Absence of flexible, interactive frameworks for evaluating open-source LLMs in realistic diagnostic workflows.
+    \item Limited modelling of patient behaviour, communication irregularities, and bias-induced distortions.
+    \item Insufficient tools for analysing multi-turn reasoning processes and error cascades.
+    \item Inadequate architectural flexibility for modifying agent roles, memory handling, and dialogue policies.
+    \item Lack of reliable mechanisms to compare diagnostic trajectories, not just outcomes.
+\end{itemize}
+
+This project aims to address these gaps through a systematically engineered simulation environment that captures the richness and complexity of real-world clinical interactions.
+
+\section{Contributions}
+
+The primary contributions of this work include:
+
+\begin{enumerate}
+    \item \textbf{A custom-built multi-agent clinical simulation framework} with modular and extensible agent definitions.
+    \item \textbf{A configurable bias-injection system} enabling precise modelling of cognitive and implicit biases affecting dialogue and decision-making.
+    \item \textbf{A robust open-source LLM inference mechanism} featuring template harmonization, context stabilization, quantized inference, and error tolerance.
+    \item \textbf{Integration of a structured diagnostic evidence pipeline} supporting adaptive test ordering and progressive clinical reasoning.
+    \item \textbf{A comprehensive evaluation strategy} incorporating accuracy metrics, behavioural observations, and bias sensitivity analysis.
+\end{enumerate}

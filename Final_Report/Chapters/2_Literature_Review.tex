@@ -1,0 +1,40 @@
+\chapter{Literature Review}
+\label{Chapter2}
+\lhead{Chapter 2. \emph{Literature Review}}
+
+\section{Medical Question Answering Benchmarks}
+
+The evaluation of artificial intelligence in medicine has historically relied on static Question-Answering (QA) datasets. The MedQA dataset comprises medical question-answering pairs sourced from the US Medical Licensing Examination (USMLE). Models are provided with a complete patient history, demographics, and symptoms, and must select the correct multiple-choice diagnosis or treatment plan. Similar datasets include PubMedQA, MedMCQA, and MMLU clinical topics.
+
+While foundational models such as GPT-4 have achieved over 90\% accuracy on USMLE, surpassing expert human scores~\cite{schmidgall2024agentclinic}, these static QA formats assess only knowledge retrieval. They fail to test whether a model can iteratively formulate differential diagnoses, manage clinical uncertainty across multiple turns, or adaptively acquire evidence through targeted questioning. Strong performance on static benchmarks therefore provides limited assurance of competence in interactive diagnostic workflows.
+
+\section{Dialogue-Based and Multi-Agent Clinical Simulations}
+
+Recognising the limitations of static QA, recent research has introduced dialogue-based clinical simulations. Early systems relied on rule-based templates and decision trees, offering deterministic behaviour but lacking natural conversational flexibility.
+
+Modern approaches, such as AMIE (Articulate Medical Intelligence Explorer)~\cite{tu2024towards} and Agent Hospital~\cite{li2024agenthospital}, utilise LLMs assuming specific clinical roles. While AMIE demonstrated improved diagnostic accuracy in simulated multi-turn conversations, it remains closed-source, heavily reliant on proprietary models, and lacks the modularity required for broader scientific replication. Agent Hospital provides an evolvable simulacrum but suffers from homogeneous agent designs---a structural vulnerability that this thesis identifies and formalises as \textit{Lexical Leakage}. Furthermore, existing simulation systems function more as end-to-end benchmarks than extensible research tools capable of injecting specific cognitive biases or supporting local open-source model inference~\cite{fan2024aihospital,liao2024automatic}.
+
+\section{Bias and Fairness in Medical AI}
+
+Implicit demographic biases---related to race, gender, and socioeconomic status---are well documented in the healthcare literature and readily propagate into LLMs trained on historical text corpora. However, \textit{cognitive biases}---systematic deviations from normative reasoning---are equally consequential in clinical AI.
+
+Anchoring bias, confirmation bias, and recency effects shape human diagnostic reasoning and are known to cause systematic diagnostic errors in clinical practice~\cite{johri2023guidelines}. LLMs display similar tendencies when early conversational cues disproportionately influence later reasoning steps. Most existing clinical AI benchmarks provide no structured mechanism for injecting such biases into patient responses or clinician reasoning paths, limiting the ability to study fairness, robustness, and behavioural sensitivity under controlled distortions.
+
+\section{Open-Source LLMs and Inference Optimisation}
+
+Open-source LLMs such as Llama-3, Mistral, and Mixtral offer transparency and local deployability. However, deploying multi-agent simulations using these models is bottlenecked by GPU memory. A single 7B-parameter model in 16-bit floating-point (FP16) requires approximately 14\,GB of VRAM; running heterogeneous multi-agent architectures requires multiple models simultaneously.
+
+Recent advancements in quantisation---specifically NormalFloat4 (NF4) via QLoRA techniques and Flash Attention mechanisms~\cite{du2023improving}---permit massive memory footprint reductions with near-zero degradation in reasoning capability. These techniques are essential for enabling the complex heterogeneous architectures proposed in this thesis to operate within a single-GPU VRAM budget and remain practically deployable in academic research environments.
+
+\section{Summary of Research Gaps}
+
+The survey of the literature reveals several key limitations in current medical AI evaluation:
+\begin{enumerate}
+    \item Static QA benchmarks do not emulate multi-step, sequential clinical reasoning.
+    \item Existing simulation frameworks lack modularity, transparency, and open-source compatibility.
+    \item Lexical Leakage in homogeneous multi-agent systems artificially inflates diagnostic accuracy.
+    \item Bias modelling is superficial or absent, precluding rigorous safety analysis.
+    \item Process-oriented evaluation metrics (trajectory, stability, test rationality) are absent from existing frameworks.
+\end{enumerate}
+
+These gaps collectively motivate the architectural and methodological choices in this thesis, and are systematically addressed through the design and implementation of AgentClinic~v2.1.

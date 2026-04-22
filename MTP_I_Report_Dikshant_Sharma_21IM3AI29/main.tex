@@ -1,0 +1,279 @@
+\documentclass[12pt, a4paper, oneside]{Thesis} % Paper size, default font size and one-sided paper
+\usepackage{wrapfig}
+\usepackage{lscape}
+\usepackage{rotating}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{underscore}
+\usepackage{multirow}
+\usepackage[T1]{fontenc}
+\usepackage{makecell}
+\usepackage{changepage}
+\usepackage{subcaption}
+\usepackage{subfig}
+    
+\setcellgapes{1.25pt}
+
+% remove hypenation
+\tolerance=9999
+\emergencystretch=10pt
+\hyphenpenalty=10000
+\exhyphenpenalty=100
+
+\usepackage{lineno,hyperref}
+\modulolinenumbers[5]
+
+
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{stackengine}
+\usepackage{url}
+\usepackage{numprint}
+\usepackage{caption}
+
+\usepackage{booktabs}  
+\usepackage{siunitx}
+%\usepackage[showframe=false]{geometry}
+% \usepackage{subfigure}
+
+\nprounddigits{3}
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+
+\setstackEOL{\#}
+\setstackgap{L}{12pt}
+
+
+\usepackage{subcaption} %incompatible with subfig
+    \setcounter{secnumdepth}{3}
+\graphicspath{{Pictures/}} % Specifies the directory where pictures are stored
+\usepackage{natbib} % Use the natbib reference package - read up on this to edit the reference style; if you want text (e.g. Smith et al., 2012) for the in-text references (instead of numbers), remove 'numbers' v
+
+\hypersetup{urlcolor=black, colorlinks=false} % Colors hyperlinks in blue - change to black if annoyingv`	
+
+\thesistitle{Evaluating Large Language Models for Clinical Decision-Making Using AgentClinic}
+\supervisor{Prof. Jiaul Hoque Paik}
+\degree{Masters of Technology}
+\degreemajor{Department of Artificial Intelligence}
+\authors{Dikshant Sharma}
+\rollno{21IM3AI29}
+\university{Indian Institute of Technology Kharagpur}
+\department{Department of Artificial Intelligence}
+\unisite{http://www.iitkgp.ac.in}
+\depsite{http://www.iitkgp.ac.in}
+\placeshrt{Kharagpur}
+\placelng{Kharagpur - 721302, India}
+\datesub{November, 2025}
+\datesig{November, 2025}
+\semsub{}
+\keywords{Large Language Models}
+\coursecd{Project-III (AI67101) }
+
+\title{\fontsize{13.2pt}{16pt}\selectfont \ttitle} % Defines the thesis title - don't touch this
+\begin{document}
+%\makeatletter
+%\renewcommand*{\NAT@nmfmt}[1]{\textsc{#1}}
+%\makeatother
+
+% prints author names as small caps
+
+
+\frontmatter % Use roman page numbering style (i, ii, iii, iv...) for the pre-content pages
+
+\setstretch{1.6} % Line spacing of 1.6 (double line spacing)
+
+% Define the page headers using the FancyHdr package and set up for one-sided printing
+\fancyhead{} % Clears all page headers and footers
+\rhead{\thepage} % Sets the right side header to show the page number
+\lhead{} % Clears the left side page header
+
+%\pagestyle{fancy} % Finally, use the "fancy" page style to implement the FancyHdr headers
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % New command to make the lines in the title page
+
+% PDF meta-data
+\hypersetup{pdftitle={\ttitle}}
+\hypersetup{pdfsubject=\subjectname}
+\hypersetup{pdfauthor=\authornames}
+\hypersetup{pdfkeywords=\keywordnames}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+\maketitle
+%\titlepg % Add a gap in the Contents, for aesthetics
+
+\clearpage % Start a new page
+
+%----------------------------------------------------------------------------------------
+%	DECLARATION PAGE
+%	Your institution may give you a different text to place here
+%----------------------------------------------------------------------------------------
+
+
+\Declaration% Add a gap in the Contents, for aesthetics
+
+
+%----------------------------------------------------------------------------------------
+%	CERTIFICATE PAGE
+%----------------------------------------------------------------------------------------
+
+\addtotoc{Certificate} % Add the "Abstract" page entry to the Contents
+
+\certificate{\addtocontents{toc}{} % Add a gap in the Contents, for aesthetics
+
+\clearpage % Start a new page
+
+%----------------------------------------------------------------------------------------
+%	ABSTRACT PAGE
+%----------------------------------------------------------------------------------------
+
+\addtotoc{Abstract} % Add the "Abstract" page entry to the Contents
+
+\abstract{\addtocontents{toc}{} % Add a gap in the Contents, for aesthetics
+
+Recent advancements in large language models (LLMs) have opened the possibility of assisting clinical practitioners in complex diagnostic scenarios. However, most existing evaluation protocols continue to rely on static question–answering datasets that fail to approximate the multi-stage, uncertainty-driven nature of real clinical practice. The absence of adaptive behavioural simulation, dynamic test-ordering capabilities, and context-sensitive patient responses limits the ecological validity of such benchmarks.
+
+Motivated by these gaps, this project proposes an \textit{extended multi-agent clinical simulation framework} engineered from the ground up to evaluate LLMs under interactive, sequential, and bias-sensitive clinical conditions. Building on the conceptual idea of interactive diagnostic environments but implementing a significantly redesigned architecture, the framework comprises a modular orchestrator, a symptom-responsive dialogue engine, a diagnostic evidence aggregator, a bias-injection manifold, and a controller for sequential tool-based reasoning. The implementation was developed through several iterations of system-level refinement, with emphasis on robustness, extensibility, and compatibility with open-source LLMs.
+
+The project further investigates how cognitive and implicit biases affect LLM-driven diagnostic reasoning, and proposes several architectural improvements—including hierarchical prompting layers, structured context management, and instruction-tuned behavioural stabilizers—to enhance reliability. Results placeholders are included for final accuracy, behavioural, and bias analyses.
+
+
+
+\clearpage % Start a new page
+
+
+%----------------------------------------------------------------------------------------
+%	ACKNOWLEDGEMENTS
+%----------------------------------------------------------------------------------------
+
+\setstretch{1.3} % Reset the line-spacing to 1.3 for body text (if it has changed)
+
+\acknowledgements{\addtocontents{toc}{}%\vspace{1em}} % Add a gap in the Contents, for aesthetics
+
+I sincerely thank my project guide, Prof. Jiaul Hoque Paik, for his invaluable insights and constructive feedback which made this project a successful endeavour. 
+Furthermore, I thank the Department of Artificial Intelligence for granting me an opportunity and resources for pursuing this project. \\ 
+I finally extend my gratitude to my family and friends for their support. 
+
+}
+
+%----------------------------------------------------------------------------------------
+%	LIST OF CONTENTS
+%----------------------------------------------------------------------------------------
+\clearpage
+\pagestyle{fancy} % The page style headers have been "empty" all this time, now use the "fancy" headers as defined before to bring them back
+
+\lhead{\emph{Contents}} % Set the left side page header to "Contents"
+\tableofcontents % Write out the Table of Contents
+
+%----------------------------------------------------------------------------------------
+%	ABBREVIATIONS
+%----------------------------------------------------------------------------------------
+
+% \clearpage % Start a new page
+
+% \setstretch{1.5} % Set the line spacing to 1.5, this makes the following tables easier to read
+
+% \lhead{\emph{Abbreviations}} % Set the left side page header to "Abbreviations"
+% \listofsymbols{ll} % Include a list of Abbreviations (a table of two columns)
+% {
+% \textbf{HLF} & \textbf{H}yper\textbf{L}edger \textbf{F}abric \\
+% \textbf{ABAC} & \textbf{A}ttribute \textbf{B}ased \textbf{A}ccess \textbf{C}ontrol \\
+% \textbf{IPFS} & \textbf{I}nter\textbf{P}lanetary \textbf{F}ile \textbf{S}ystem\\
+% \textbf{GDPR} & \textbf{G}eneral \textbf{D}ata \textbf{P}rotection \textbf{R}egulation\\
+% \textbf{RTBF} & \textbf{R}ight \textbf{T}o \textbf{B}e \textbf{F}orgotten\\
+% \textbf{PKI} & \textbf{P}ublic \textbf{K}ey \textbf{I}nfrastructure\\
+% \textbf{CA} & \textbf{C}ertificate \textbf{A}uthority\\
+% \textbf{TLS} & \textbf{T}ransport \textbf{L}ayer \textbf{S}ecurity\\
+% \textbf{MSP} & \textbf{M}embership \textbf{S}ervice \textbf{P}rovider\\
+% \textbf{MVCC} & \textbf{M}ulti \textbf{V}ersion \textbf{C}oncurrency \textbf{C}ontrol
+% %\textbf{Acronym} & \textbf{W}hat (it) \textbf{S}tands \textbf{F}or \\
+% }
+
+%----------------------------------------------------------------------------------------
+%	PHYSICAL CONSTANTS/OTHER DEFINITIONS
+%----------------------------------------------------------------------------------------
+%
+%\clearpage % Start a new page
+%
+%\lhead{\emph{Physical Constants}} % Set the left side page header to "Physical Constants"
+%
+%\listofconstants{lrcl} % Include a list of Physical Constants (a four column table)
+%{
+%Speed of Light & $c$ & $=$ & $2.997\ 924\ 58\times10^{8}\ \mbox{ms}^{-\mbox{s}}$ (exact)\\
+%% Constant Name & Symbol & = & Constant Value (with units) \\
+%}
+
+%----------------------------------------------------------------------------------------
+%	DEDICATION
+%----------------------------------------------------------------------------------------
+%
+%\setstretch{1.3} % Return the line spacing back to 1.3
+%
+%\pagestyle{empty} % Page style needs to be empty for this page
+%
+%\dedicatory{For/Dedicated to/To my\ldots} % Dedication text
+%
+%\addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+
+%----------------------------------------------------------------------------------------
+%	THESIS CONTENT - CHAPTERS
+%----------------------------------------------------------------------------------------
+
+\mainmatter % Begin numeric (1,2,3...) page numbering
+
+\pagestyle{fancy} % Return the page headers back to the "fancy" style
+
+% Include the chapters of the thesis as separate files from the Chapters folder
+% Uncomment the lines as you write the chapters
+
+\input{Chapters/1_Introduction}
+\input{Chapters/2_Literature_Review}
+\input{Chapters/3_Methodology}
+% \input{Chapters/ExperimentalSetup}
+% \input{Chapters/PhysicalSetup}
+\input{Chapters/4_Results_and_Discussion}
+\input{Chapters/5_Conclusion_and_FutureWorks}
+% \input{Chapters/5_Bibliography}
+% \input{Chapters/Problem}
+% \input{Chapters/Related}
+% \input{Chapters/Architecture}
+% \input{Chapters/Implementation}
+% \input{Chapters/Evaluations}
+% \input{Chapters/Conclusion}
+
+%----------------------------------------------------------------------------------------
+%	THESIS CONTENT - APPENDICES
+%----------------------------------------------------------------------------------------
+
+% \addtocontents{toc}{\vspace{2em}} % Add a gap in the Contents, for aesthetics
+
+% \appendix % Cue to tell LaTeX that the following 'chapters' are Appendices
+
+% % Include the appendices of the thesis as separate files from the Appendices folder
+% % Uncomment the lines as you write the Appendices
+
+% \input{Appendices/AppendixA}
+% %\input{Appendices/AppendixB}
+% %\input{Appendices/AppendixC}
+
+% \addtocontents{toc}{} % Add a gap in the Contents, for aesthetics
+
+% \backmatter
+
+% \input{References}
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+% \chapter{Bibliography}
+\label{References}
+
+\lhead{\emph{Bibliography}} % Change the page header to say "Bibliography"
+\nocite{*}
+\bibliographystyle{unsrt} % Use the unsorted bibliography style
+\bibliography{Bibliography} % Use the Bibliography.bib file for the bibliography
+\end{document}  

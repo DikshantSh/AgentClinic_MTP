@@ -1,0 +1,29 @@
+\chapter{Discussion}
+\label{Chapter7}
+\lhead{Chapter 7. \emph{Discussion}}
+
+\section{The Triumph of Structured Metacognition over Lexical Leakage}
+
+The most profound finding of transitioning from the initial to the enhanced framework is the empirical demonstration of the power of structural reasoning scaffolds. In the initial system, a baseline accuracy of 44.0\% was observed using an unconstrained, homogeneous architecture. A theoretical concern was that this score may have been artificially inflated by Lexical Leakage---the phenomenon where the Doctor LLM subconsciously infers the patient's ground truth through shared embedding manifold geometry.
+
+To address this, the enhanced framework enforces strict heterogeneous engine isolation, severing any shared embedding overlap. Logically, removing these implicit performance aids should cause accuracy to decrease. Instead, the baseline accuracy \textbf{increased to 45.6\%} under AgentClinic v2.1. This result reveals that the architectural discipline imposed by the LangGraph DCG and the latent metacognitive reflection node provides a reasoning scaffold so effective that it completely eclipses the removal of Lexical Leakage. By forcing the LLM to populate a structured JSON differential diagnosis \textit{before} emitting dialogue, the framework stabilises the model's clinical trajectory, prevents iterative hallucinations, and channels attention capacity toward evidence-driven deduction.
+
+\section{Domain Specialisation versus Instruction Alignment}
+
+Results for experiments E2 and E3 highlight an ongoing tension in medical AI design. While fine-tuning on biomedical literature (JSL-MedMistral, E2) improves diagnostic vocabulary, pathological anchoring, and domain-specific recall, it frequently induces \textit{catastrophic forgetting} of the broader logical reasoning and instruction-following capabilities required for coherent multi-turn simulation~\cite{tang2023medagents}. This was observed clearly in the initial framework results, where BioGPT (35\%) and JSL-Med (32\%) both underperformed the generalist Mistral-7B (44\%) despite possessing significantly greater biomedical domain knowledge.
+
+A sufficiently large and highly instruction-aligned generalist model such as Llama-3.1-8B (E3) appears theoretically better equipped to handle the sequential, multi-conditional reasoning and Test Rationality requirements of interactive clinical consultation. This implies that for interactive clinical AI, \textit{instruction alignment and logical deduction} are as critical as---or more critical than---specialty medical knowledge retrieval. Optimal clinical agents likely require both dimensions simultaneously, motivating the dual-adapter LoRA approach outlined in the future work section.
+
+\section{The Safety Threat of Cognitive Biases}
+
+The empirical findings from E4 and E5 carry serious implications for the deployment of open-source LLMs in clinical decision support. A model's context window inherently constitutes a vector for recency bias: if an LLM sequentially processes multiple cardiac cases in an emergency room deployment, its mathematical inclination to diagnose a subsequent unrelated case as cardiac-related is substantially elevated due to the disproportionate attention weights assigned to recent tokens.
+
+Without explicit architectural debiasing mechanisms---such as enforced context resets between cases, constrained attention windowing, or metacognitive override prompts---LLMs will consistently replicate and potentially amplify human cognitive errors. The finding that confirmation bias leads to a $DS$ of $\approx$0.88 (high apparent stability) while simultaneously yielding the lowest accuracy ($\sim$31.4\%) is particularly alarming: it demonstrates that a model can appear \textit{confidently consistent} while being systematically incorrect, a failure mode with direct patient safety consequences.
+
+\section{Implications for Clinical AI Evaluation Standards}
+
+A secondary contribution of this work is the demonstration that binary diagnostic accuracy is an insufficient proxy for clinical AI safety or readiness. The process-oriented metrics introduced in this thesis---Diagnostic Stability, Test Rationality, and Information Efficiency---reveal behaviours that outcome accuracy entirely masks. A model that achieves 45.6\% correct terminal diagnoses but exhibits $TR < 0.5$ (ordering invasive procedures before basic vitals) or $DS < 0.4$ (erratically switching between entirely unrelated diagnoses) would constitute an unacceptable clinical risk, regardless of its top-line accuracy figure. Future evaluation standards for clinical LLMs should therefore mandate process-level reporting alongside outcome accuracy~\cite{johri2023guidelines}.
+
+\section{Limitations}
+
+A primary limitation of the current framework is that the Measurement Agent operates exclusively within the text domain. Real-world diagnostics rely heavily on visual data; integrating Vision-Language Models (VLMs) to process raw ECG waveforms, chest radiographs, and histological slides represents a critical and unaddressed frontier. Additionally, all experiments are conducted on the AgentClinic-MedQA subset, and generalisation to broader clinical datasets such as MIMIC-IV or NEJM case challenges warrants separate investigation.
