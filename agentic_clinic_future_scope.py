@@ -331,7 +331,6 @@ class LocalServerLLMWrapper:
             model_id: HuggingFace model identifier
             quantize: If True, load with 4-bit NF4 quantization
         """
-        quantize=False
         print(f"[LocalServerLLMWrapper] Loading model: {model_id} (quantize={quantize})")
         load_start = time.time()
 
@@ -614,7 +613,11 @@ class PatientAgent:
             f" Here was the doctor response: {question}"
             f"Now please continue your dialogue\nPatient: "
         )
-        answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
+        if hasattr(model_class, 'use_dynamic_lora') and model_class.use_dynamic_lora:
+            with model_class.model.disable_adapter():
+                answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
+        else:
+            answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
         answer = _clean_dialogue_response(answer)
         self.agent_hist += question + "\n\n" + answer + "\n\n"
         return answer
@@ -867,7 +870,11 @@ class MeasurementAgent:
             f"\nHistory: {self.agent_hist}\n"
             f"Doctor request: {question}"
         )
-        answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
+        if hasattr(model_class, 'use_dynamic_lora') and model_class.use_dynamic_lora:
+            with model_class.model.disable_adapter():
+                answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
+        else:
+            answer = query_model(self.backend, prompt, self.system_prompt(), model_class)
         self.agent_hist += question + "\n\n" + answer + "\n\n"
         return answer
 
@@ -905,7 +912,11 @@ def compare_results(diagnosis, correct_diagnosis, moderator_llm, model_class):
         "medical synonyms (e.g., 'Heart Attack' = 'Myocardial Infarction'). "
         "Respond ONLY with 'Yes' or 'No'. Nothing else."
     )
-    answer = query_model(moderator_llm, prompt, sys, model_class)
+    if hasattr(model_class, 'use_dynamic_lora') and model_class.use_dynamic_lora:
+        with model_class.model.disable_adapter():
+            answer = query_model(moderator_llm, prompt, sys, model_class)
+    else:
+        answer = query_model(moderator_llm, prompt, sys, model_class)
     return answer.lower()
 
 

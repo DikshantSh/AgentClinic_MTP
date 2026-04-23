@@ -360,7 +360,7 @@ def train_adapter(adapter_type: str,
         save_strategy="epoch",
         save_total_limit=2,
         bf16=True,
-        max_seq_length=max_seq_length,
+        max_length=max_seq_length,
         dataset_text_field="text",
         packing=False,
         report_to="none",  # Disable wandb/tensorboard
