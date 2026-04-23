@@ -1,0 +1,31 @@
+\chapter{Conclusion and Future Work}
+\label{Chapter8}
+\lhead{Chapter 8. \emph{Conclusion and Future Work}}
+
+\section{Conclusion}
+
+This thesis moved the evaluation of Large Language Models in clinical environments from static factual recall toward dynamic, interactive, and trajectory-aware simulation. By developing \textbf{AgentClinic v2}, we built a deterministic LangGraph state machine that runs entirely on local hardware via 4-bit NF4 double quantisation and heterogeneous multi-engine assignments, removing both the resource barrier and the Lexical Leakage vulnerability of the initial framework.
+
+The latent metacognitive reflection node proved to be a powerful addition. Forcing an LLM to ``think before it speaks'' improved baseline accuracy from 44.0\% (initial framework) to \textbf{45.6\%} (AgentClinic v2), even after removing the implicit benefits of Lexical Leakage. Beyond accuracy, this thesis shows that clinical AI must be evaluated on its \textit{process}---Diagnostic Stability, Test Rationality, and Information Efficiency---not just its terminal outcome.
+
+Medical fine-tuning improves domain anchoring (E2: 50.2\%), but instruction-aligned reasoning models perform even better for interactive tasks (E3: 53.5\%). Dynamic LoRA adapter routing in E6 resolved this trade-off, achieving the highest accuracy in the study at \textbf{54.7\%} by decoupling reasoning from dialogue generation at the adapter level. At the same time, open-source models remain vulnerable to cognitive distortions: recency bias causes erratic hypothesis thrashing (E4: 38.1\%), and confirmation bias leads to premature diagnostic closure (E5: 31.4\%). These results make clear that cognitive robustness must be treated as a primary design criterion in any clinical LLM deployment.
+
+\section{Future Work: Advanced Fine-Tuning and Post-Training Alignment}
+
+While this thesis establishes a framework for evaluating multi-turn clinical reasoning, the next step is to actively mitigate the failure modes we identified. Future work will use AgentClinic v2 not just as an evaluator, but as an environment for advanced post-training alignment.
+
+\subsection{Process Reward Modelling via Direct Preference Optimisation}
+
+Current medical LLMs are typically trained via Supervised Fine-Tuning (SFT) on static QA pairs, optimised to predict the correct terminal diagnosis but with no understanding of the \textit{trajectory} needed to reach it safely. We propose applying Direct Preference Optimisation (DPO) to full clinical consultation trajectories. Instead of rewarding only the correct final outcome, a Process Reward Model would evaluate two clinical paths: Path~A (premature hypothesis commitment with low Test Rationality) versus Path~B (systematic basic-before-advanced investigation with high Diagnostic Stability). By penalising Path~A and rewarding Path~B, DPO would adjust the LLM's behavioural policy to prefer methodical, guideline-concordant reasoning.
+
+\subsection{Reinforcement Learning from AI Feedback via Self-Play}
+
+Generating expert, human-annotated clinical dialogues for fine-tuning is expensive and difficult to scale. A natural alternative is to use the AgentClinic framework as a Reinforcement Learning (RL) environment. By allowing heterogeneous agents to simulate thousands of cases through self-play, synthetic training data can be generated automatically. The \texttt{ClinicalTrajectoryEvaluator} developed in this thesis would serve as the programmatic reward function: trajectories scoring highly on $DS$ and $TR$ would be archived, enabling iterative fine-tuning on the model's own successful reasoning paths. This would create a self-improving clinical agent without the overhead of human annotation.
+
+\subsection{Extending Dynamic LoRA to Bias Resilience}
+
+The dynamic LoRA routing in E6 showed clear gains in unbiased settings. A natural extension is to train \textit{debiasing adapters} aimed at counteracting the failure modes observed in E4 and E5. A recency-debiasing adapter could be trained on trajectory pairs where the model successfully resisted anchoring to injected case memories, while a confirmation-debiasing adapter could be optimised to maintain high Test Rationality even under strong prior hypotheses. Combining these with the existing reasoning and dialogue adapters would create a four-adapter routing manifold, selected dynamically by the LangGraph orchestrator based on both the active node and detected bias risk.
+
+\subsection{Multimodal Simulation Integration}
+
+The current \texttt{measurement\_node} operates only in the text domain. Real-world diagnostics rely heavily on visual pattern recognition. Future versions of AgentClinic should integrate Vision-Language Models (VLMs) such as LLaVA-Med or Med-Gemini, enabling the Measurement Agent to return raw radiographic images, ECG waveforms, and pathology slides for direct interpretation by the Doctor agent, closing the remaining gap toward end-to-end clinical simulation.

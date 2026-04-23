@@ -1,0 +1,141 @@
+% ============================================================
+%  CHAPTER 7 — DISCUSSION
+% ============================================================
+\section{Chapter 7: Discussion}
+\label{ch:discussion}
+
+% ----------------------------------------------------------
+\subsection{Structured Metacognition Eclipses Lexical Leakage}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{This is the most important finding of the thesis.} The Phase~1 homogeneous system achieved 44.0\% accuracy with Lexical Leakage potentially inflating results. The Phase~2 heterogeneous system \textit{removed} Leakage entirely, yet accuracy \textbf{rose to 45.6\%}. The architectural scaffold---LangGraph DCG + latent reflection node---provided a reasoning advantage that more than compensated for the loss of any implicit embedding-manifold hints.
+
+\textbf{Mechanistic explanation:} By forcing the LLM to populate a structured JSON differential \textit{before} emitting dialogue, the framework:
+\begin{enumerate}
+    \item Stabilises the clinical trajectory (prevents iterative hallucinations)
+    \item Channels attention capacity toward evidence-driven deduction
+    \item Creates a Latent Chain-of-Thought scaffold that constrains subsequent dialogue
+\end{enumerate}
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine two students taking an exam. Student A shares a brain with the answer key (Lexical Leakage) but writes answers stream-of-consciousness. Student B has no access to the answer key but is forced to write an outline of their reasoning before each answer. Student B scores \textit{higher} because the discipline of outlining improves their thinking more than the leaked hints helped Student A. Structured thinking beats cheating.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+This finding validates the core thesis hypothesis: that process-level architectural interventions matter more than raw model capability or information leakage. It justifies the entire v2 redesign.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Domain Specialisation vs.\ Instruction Alignment}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+A fundamental tension exists in medical AI:
+\begin{itemize}
+    \item \textbf{Domain specialisation} (via medical SFT) improves terminology recall, pathological anchoring, and clinical vocabulary but risks catastrophic forgetting of general reasoning.
+    \item \textbf{Instruction alignment} (via RLHF/DPO on general instruction data) preserves multi-step logical reasoning, command following, and conversational coherence.
+\end{itemize}
+
+Evidence: JSL-MedMistral (E2: 50.2\%) has superior medical knowledge but lower TR (0.71). Llama-3.1 (E3: 53.5\%) has superior instruction following and higher TR (0.79). E3 outperforms E2 by 3.3 percentage points.
+
+\textbf{Implication:} For interactive clinical AI, \textit{instruction alignment and logical deduction} are as critical as---or more critical than---specialty medical knowledge retrieval. The optimal clinical agent requires both.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+A medical specialist who knows every disease but can't have a coherent conversation is less useful than a well-trained general practitioner who asks the right questions in the right order. Knowledge without process is like a library without a librarian.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Dynamic LoRA Resolves the Trade-off}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The E6 experiment proves that the specialisation--alignment trade-off is \textbf{not inherent to LLM architecture} but is a consequence of \textbf{monolithic weight modification}. By deploying task-specific LoRA adapters that activate conditionally:
+\begin{itemize}
+    \item The \textbf{reasoning adapter} steers the model toward medical differential enumeration during reflection (domain specialisation without forgetting)
+    \item The \textbf{dialogue adapter} maintains conversational coherence during patient interaction (instruction alignment preserved)
+    \item Neither adapter catastrophically modifies the base model's pre-trained weights
+\end{itemize}
+
+Result: E6 (54.7\%) surpasses both E2 (50.2\%) and E3 (53.5\%), demonstrating that you can have both domain expertise \textit{and} instruction alignment simultaneously through adapter decomposition.
+\end{acadbox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+This resolves the central question from Chapter 4: ``Why did medical fine-tuning hurt performance?'' The answer is not that medical knowledge is harmful, but that \textit{monolithic} fine-tuning entangles reasoning and dialogue capabilities. LoRA disentangles them.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Safety Threat of Cognitive Biases}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+E5 (confirmation bias) represents the \textbf{most dangerous failure mode identified}:
+\begin{itemize}
+    \item $DS = 0.88$ (appears very stable and consistent)
+    \item Accuracy $= 31.4\%$ (systematically wrong)
+\end{itemize}
+
+This means the model \textbf{appears confidently consistent while being catastrophically incorrect}. In a clinical deployment, a system that rarely changes its mind would be perceived as ``reliable'' by healthcare workers---but would be systematically misdiagnosing patients. This is a direct patient safety threat.
+
+\textbf{Recency bias (E4)} is less dangerous in one sense ($DS = 0.45$ makes erratic behaviour visible) but still harmful: the model conflates independent patient presentations with recently seen cases.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+\textbf{Confirmation bias (E5):} A broken compass that always points north. It seems very consistent and reliable---until you realise you're lost. High stability + low accuracy = confident wrongness.
+
+\textbf{Recency bias (E4):} A GPS that keeps trying to reroute you to wherever you went yesterday. It's clearly struggling (low stability), but at least you can tell something is wrong.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+Binary accuracy alone would flag E5 as ``poor'' (31.4\%). But it would \textit{not} reveal that the model is dangerously confident in its wrong answers. Only the DS metric exposes this. This validates the thesis argument that process metrics are essential for clinical AI safety.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Implications for Clinical AI Evaluation Standards}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Binary diagnostic accuracy is an \textbf{insufficient proxy} for clinical AI safety. This thesis demonstrates that:
+\begin{itemize}
+    \item A model with 45.6\% accuracy and $TR < 0.5$ (ordering MRIs before vital signs) is clinically unacceptable regardless of its accuracy.
+    \item A model with $DS < 0.4$ (erratically switching between unrelated diagnoses) is unreliable regardless of final outcome.
+    \item A model with $DS = 0.88$ and accuracy $= 31.4\%$ is \textbf{actively dangerous}---it looks reliable but is systematically wrong.
+\end{itemize}
+
+\textbf{Recommendation:} Future clinical AI evaluation standards should mandate process-level reporting (DS, TR, IE) alongside outcome accuracy.
+\end{acadbox}
+
+% ----------------------------------------------------------
+\subsection{Limitations}
+
+\begin{enumerate}
+    \item \textbf{Text-only measurement agent:} Real diagnostics rely on visual data (ECG waveforms, X-rays, histology). The current system operates entirely in text.
+    \item \textbf{Single dataset:} All experiments use AgentClinic-MedQA (107 scenarios). Generalisation to MIMIC-IV (real EHR data) or NEJM case challenges is untested.
+    \item \textbf{Moderator accuracy:} The LLM-mediated semantic comparison may itself introduce evaluation noise.
+    \item \textbf{LoRA adapters are thesis-specific:} The reasoning and dialogue adapters require task-specific training data and may not generalise to other clinical simulation formats.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 7}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} What is your single most important finding?\\
+    \textbf{A:} That structured metacognition (the reflection node) eclipses Lexical Leakage. Removing the shared embedding advantage while adding forced reasoning \textit{increased} accuracy, proving architecture matters more than model-level information flow.
+
+    \item \textbf{Q:} Why is E5 more dangerous than E4?\\
+    \textbf{A:} E5 (confirmation bias) appears stable ($DS = 0.88$) while being wrong (31.4\%). E4 (recency bias) is visibly erratic ($DS = 0.45$). Visible failure is less dangerous than invisible failure because visible failure can be detected and corrected.
+
+    \item \textbf{Q:} How does LoRA resolve the specialisation--alignment trade-off?\\
+    \textbf{A:} By decoupling reasoning and dialogue into separate adapters. The base model is never monolithically modified; task-specific behaviours are added through lightweight, independently trained low-rank updates.
+
+    \item \textbf{Q:} Is 54.7\% accuracy clinically acceptable?\\
+    \textbf{A:} No. It means nearly half of diagnoses are wrong. However, this thesis is about \textit{evaluation methodology}, not deployment. We demonstrate that process metrics reveal critical safety information that accuracy alone misses.
+
+    \item \textbf{Q:} What is the main limitation of your work?\\
+    \textbf{A:} The text-only measurement agent. Real clinical diagnosis depends heavily on visual data (X-rays, ECGs, pathology). Integrating Vision-Language Models is the most important future direction.
+
+    \item \textbf{Q:} Why should binary accuracy not be the primary metric?\\
+    \textbf{A:} Because it masks \textit{how} the model reasons. A model that guesses correctly by luck gets the same score as one that follows proper clinical protocol. Our process metrics (DS, TR, IE) reveal whether the model reasons safely.
+
+    \item \textbf{Q:} Could your findings generalise beyond AgentClinic-MedQA?\\
+    \textbf{A:} The architectural findings (DCG, reflection node, LoRA routing) are framework-agnostic. The specific accuracy numbers may vary on other datasets, but the principle that structured metacognition improves LLM clinical reasoning should generalise.
+\end{enumerate}
+\end{vivabox}

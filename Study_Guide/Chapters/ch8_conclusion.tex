@@ -1,0 +1,148 @@
+% ============================================================
+%  CHAPTER 8 — CONCLUSION & FUTURE WORK
+% ============================================================
+\section{Chapter 8: Conclusion and Future Work}
+\label{ch:conclusion}
+
+% ----------------------------------------------------------
+\subsection{Summary of Findings (5 Bullet Points)}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Structured metacognition eclipses Lexical Leakage:} The LangGraph DCG + reflection node improved baseline accuracy from 44.0\% to 45.6\% \textit{despite} removing the shared embedding advantage, proving that architectural discipline is more valuable than implicit information flow.
+    
+    \item \textbf{Domain fine-tuning causes catastrophic forgetting in interactive settings:} BioGPT (35\%) and JSL-Med (32\%) underperformed generalist Mistral-7B (44\%) in Phase 1 due to SFT destroying multi-turn conversational capabilities.
+    
+    \item \textbf{Instruction alignment outperforms domain specialisation for interactive tasks:} Llama-3.1-8B (E3: 53.5\%) surpassed JSL-MedMistral (E2: 50.2\%) due to superior instruction following and multi-step logical reasoning.
+    
+    \item \textbf{Dynamic LoRA resolves the specialisation--alignment trade-off:} Dual adapters for reasoning ($T_{\text{reflect}}$) and dialogue ($T_{\text{speak}}$) achieved the highest accuracy (E6: 54.7\%) with negligible VRAM overhead ($\sim$50 MB).
+    
+    \item \textbf{Cognitive biases are a critical safety threat:} Confirmation bias induces premature diagnostic closure ($DS = 0.88$, accuracy $= 31.4\%$)---the model appears reliable while being systematically wrong. Process metrics (DS, TR, IE) are essential to expose this.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Future Work}
+
+% --- DPO ---
+\subsubsection{Process Reward Modelling via Direct Preference Optimisation (DPO)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Direct Preference Optimisation (DPO)} is a post-training alignment method that replaces the reward model + PPO pipeline of traditional RLHF with a single classification-style loss function. Given pairs of preferred ($y_w$) and dispreferred ($y_l$) outputs for the same prompt $x$, DPO directly optimises the policy $\pi_\theta$:
+\[
+\mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l)} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w | x)}{\pi_{\text{ref}}(y_w | x)} - \beta \log \frac{\pi_\theta(y_l | x)}{\pi_{\text{ref}}(y_l | x)} \right) \right]
+\]
+where $\sigma$ is the sigmoid function, $\pi_{\text{ref}}$ is the frozen reference policy, and $\beta$ controls divergence from the reference.
+
+\textbf{How it differs from RLHF:}
+\begin{itemize}
+    \item RLHF: Train reward model $\rightarrow$ run PPO to maximise reward $\rightarrow$ complex, unstable, expensive.
+    \item DPO: Skip the reward model entirely. Directly use preference pairs to shift the policy. Simpler, more stable, single-stage.
+\end{itemize}
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+\textbf{RLHF:} You hire a food critic (reward model) to taste dishes and give scores. Then you train the chef (LLM) to maximise the critic's scores via trial-and-error (PPO). Expensive: you need the critic available at all times.
+
+\textbf{DPO:} Instead of hiring a permanent critic, you just give the chef \textit{pairs}: ``This dish is better than that dish.'' The chef directly learns from the comparisons. No need for a separate critic.
+\end{analogybox}
+
+\textbf{Application to this thesis:}\\
+Generate trajectory pairs from AgentClinic v2:
+\begin{itemize}
+    \item \textbf{Path A (rejected):} Premature hypothesis commitment, low TR, erratic DS --- the model guesses early and skips tests.
+    \item \textbf{Path B (chosen):} Systematic basic-before-advanced investigation, high DS, evidence-driven diagnosis.
+\end{itemize}
+The \texttt{ClinicalTrajectoryEvaluator} would score both paths, and DPO would train the model to \textit{prefer} Path B trajectories.
+
+% --- RL Self-Play ---
+\subsubsection{RL from AI Feedback via Self-Play}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Use AgentClinic v2 as a \textbf{Reinforcement Learning environment}. Heterogeneous agents simulate thousands of clinical cases via self-play. The \texttt{ClinicalTrajectoryEvaluator} serves as the programmatic reward function:
+\[
+R = w_1 \cdot \text{Accuracy} + w_2 \cdot DS + w_3 \cdot TR + w_4 \cdot IE
+\]
+Trajectories scoring highly on the composite reward are archived, and the Doctor model is iteratively fine-tuned on its own successful reasoning paths using PPO or DPO---creating a \textbf{self-improving clinical agent} without human annotation overhead.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Like a chess AI (AlphaZero) that plays against itself millions of times, learning from its wins and losses. The AgentClinic Doctor plays against the Patient and Measurement agents, learns which reasoning strategies lead to correct diagnoses, and gradually improves---no human expert needed.
+\end{analogybox}
+
+% --- Debiasing Adapters ---
+\subsubsection{Extending LoRA to Bias Resilience}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Train \textbf{debiasing adapters} that specifically counteract cognitive bias failure modes:
+\begin{itemize}
+    \item \textbf{Recency-debiasing adapter:} Trained on trajectory pairs where the model successfully resisted anchoring to injected $k=5$ case memories.
+    \item \textbf{Confirmation-debiasing adapter:} Trained to maintain high TR even under strong prior hypotheses.
+\end{itemize}
+
+Combined with the existing reasoning and dialogue adapters, this creates a \textbf{four-adapter routing manifold}:
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Active Node / Condition} & \textbf{Adapter} \\
+\midrule
+\texttt{doctor\_reflection} & Reasoning adapter \\
+\texttt{doctor\_speaker} & Dialogue adapter \\
+Recency bias detected & Recency-debiasing adapter \\
+Confirmation bias detected & Confirmation-debiasing adapter \\
+\bottomrule
+\end{tabular}
+\end{center}
+The LangGraph orchestrator dynamically selects adapters based on both the active node \textit{and} detected bias risk.
+\end{acadbox}
+
+% --- Multimodal ---
+\subsubsection{Multimodal Integration}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The current \texttt{measurement\_node} returns text-only results. Real clinical diagnosis relies heavily on visual pattern recognition:
+\begin{itemize}
+    \item \textbf{ECG waveforms} (ST-elevation detection)
+    \item \textbf{Chest X-rays} (pneumonia infiltrates, cardiomegaly)
+    \item \textbf{Histopathology slides} (malignancy grading)
+    \item \textbf{Dermatology images} (lesion classification)
+\end{itemize}
+
+Future work will integrate Vision-Language Models (VLMs):
+\begin{itemize}
+    \item \textbf{LLaVA-Med:} Open-source biomedical VLM fine-tuned on medical image--text pairs.
+    \item \textbf{Med-Gemini:} Google's multimodal medical AI capable of processing images, text, and genomic data.
+\end{itemize}
+
+The Measurement Agent would return raw images instead of text descriptions, and the Doctor agent (running a VLM) would interpret them directly---bridging the final gap toward complete clinical simulation fidelity.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Currently, the system is like a phone consultation where the doctor can only \textit{hear} about test results (``Your X-ray shows a shadow in the left lung''). Future versions would be like a video consultation where the doctor can actually \textit{see} the X-ray and interpret it themselves.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 8}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} What is DPO and how does it differ from RLHF?\\
+    \textbf{A:} DPO skips the reward model and PPO. It directly optimises the policy using preference pairs $(y_w, y_l)$ with a classification-style loss. It's simpler, more stable, and single-stage.
+
+    \item \textbf{Q:} How would you generate trajectory pairs for DPO?\\
+    \textbf{A:} Run AgentClinic v2 on many cases. Use ClinicalTrajectoryEvaluator to score trajectories on DS, TR, IE. High-scoring trajectories become $y_w$ (chosen); low-scoring become $y_l$ (rejected).
+
+    \item \textbf{Q:} What is self-play in the context of your framework?\\
+    \textbf{A:} The Doctor, Patient, and Measurement agents simulate thousands of cases autonomously. The reward function uses our process metrics. The Doctor is iteratively fine-tuned on successful trajectories.
+
+    \item \textbf{Q:} How would a four-adapter routing manifold work?\\
+    \textbf{A:} The LangGraph orchestrator selects adapters based on both the active node (reflection vs.\ dialogue) and detected bias conditions. For example, during reflection under detected recency bias risk, both the reasoning adapter and recency-debiasing adapter are active.
+
+    \item \textbf{Q:} Why is multimodal integration the most important future direction?\\
+    \textbf{A:} Because real diagnosis is inherently multimodal. A system that can reason about chest X-rays, ECGs, and lab values simultaneously is far closer to genuine clinical competence than a text-only system.
+
+    \item \textbf{Q:} What would be needed to make AgentClinic clinically deployable?\\
+    \textbf{A:} (1) Multimodal measurement integration, (2) accuracy $>$80\% on diverse datasets, (3) process metrics consistently high ($DS > 0.7$, $TR > 0.9$), (4) bias resilience via debiasing adapters, (5) clinical validation with real physicians.
+
+    \item \textbf{Q:} Summarise your thesis in three sentences.\\
+    \textbf{A:} We built AgentClinic v2, a deterministic multi-agent framework that evaluates LLMs through interactive clinical simulations. We proved that structured metacognition (forced reflection) eclipses Lexical Leakage and that domain expertise and instruction alignment can coexist through dynamic LoRA adapter routing. We established that process-level metrics are essential for clinical AI safety, as binary accuracy alone masks dangerous failure modes like premature diagnostic closure.
+\end{enumerate}
+\end{vivabox}

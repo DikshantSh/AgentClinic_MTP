@@ -1,0 +1,432 @@
+% ============================================================
+%  CHAPTER 5 — ENHANCED METHODOLOGY: AgentClinic v2
+% ============================================================
+\section{Chapter 5: Enhanced Methodology --- AgentClinic v2}
+\label{ch:enhanced}
+
+% ----------------------------------------------------------
+\subsection{LangGraph Directed Cyclic Graph (DCG)}
+
+\subsubsection{What is a State Machine?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+A \textbf{finite-state machine (FSM)} is a computational model consisting of a finite set of states, a set of transitions between states, and a set of actions. At any point, the system is in exactly one state. Transitions are triggered by inputs and governed by deterministic rules. An FSM guarantees that every possible input produces a well-defined next state---eliminating undefined behaviour.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+A traffic light is a state machine: Green $\rightarrow$ Yellow $\rightarrow$ Red $\rightarrow$ Green. It never goes Green $\rightarrow$ Green or shows two colours at once. Every transition is predictable and deterministic. The while-loop from Phase 1 was like a traffic light with no timer---sometimes it randomly skips yellow or stays red forever.
+\end{analogybox}
+
+\subsubsection{What is LangGraph?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{LangGraph} is a library (by LangChain) for building stateful, multi-actor LLM applications modelled as graphs. Nodes represent computation steps (agent calls), edges represent transitions, and a \texttt{TypedDict} shared state is passed between nodes. It provides built-in support for cycles, conditional routing, and state persistence.
+\end{acadbox}
+
+\subsubsection{Why a Cyclic Graph (DCG) and Not a DAG?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+A \textbf{Directed Acyclic Graph (DAG)} has no cycles---once a node is visited, it cannot be revisited. A \textbf{Directed Cyclic Graph (DCG)} permits revisitation. Clinical consultation is inherently cyclic: the doctor asks a question, receives an answer, reflects, asks another question, orders a test, reflects again, and repeats. This cycle continues for up to 10 turns.
+\end{acadbox}
+
+\textbf{DCG flow:}
+\begin{verbatim}
+doctor_reflection -> doctor_speaker -> {patient | measurement | END}
+       ^                                         |
+       +--------------- Response -----------------+
+\end{verbatim}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+The DCG replaces the while-loop with a mathematically well-defined control structure. Every state transition is logged, every edge is deterministic, and invalid transitions are structurally impossible. This eliminates Flaw 1 (non-determinism) from Phase 1.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{The Latent Metacognitive Reflection Node}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The \texttt{doctor\_reflection} node is a hidden computation step that executes \textit{before} every Doctor utterance. The LLM is forced to output a strictly structured JSON array of its current top-3 differential diagnoses (e.g., \texttt{["Asthma", "COPD", "Pneumonia"]}). This node operates at a low sampling temperature ($T = 0.1$) for deterministic extraction. These hypotheses are stored in the \texttt{ClinicalState} trajectory log but are \textbf{not injected} into the patient-facing dialogue history.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+\textbf{``Think before you speak.''} Imagine a doctor who writes down their top 3 guesses on a private notepad before every question they ask the patient. The patient never sees the notepad. But at the end, the examiner can review all the notepad entries to see how the doctor's thinking evolved. That's the reflection node---a private scratchpad that makes thinking visible.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+This is the \textbf{core innovation}. It makes the LLM's internal reasoning observable and quantifiable (enabling DS, TR, IE metrics) without contaminating the dialogue. It also acts as a Latent Chain-of-Thought scaffold---by forcing the LLM to commit to structured diagnoses first, subsequent dialogue is constrained to align with prior reasoning.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{ClinicalState TypedDict}
+
+Every field in the shared state explained:
+
+\begin{center}
+\begin{tabular}{@{}p{5cm}p{9cm}@{}}
+\toprule
+\textbf{Field} & \textbf{Purpose} \\
+\midrule
+\texttt{last\_input\_to\_doctor} & The most recent message sent to the Doctor (from Patient or Measurement) \\
+\texttt{last\_doctor\_message} & The Doctor's most recent public utterance \\
+\texttt{differential\_diagnoses} & Current top-3 DDx from the reflection node (JSON array) \\
+\texttt{turn\_count} & Current turn number (0 to max\_turns) \\
+\texttt{diagnosis\_ready} & Boolean flag: has the Doctor declared a final diagnosis? \\
+\texttt{differential\_trajectory} & List of \textit{all} DDx arrays from every reflection---the full reasoning history \\
+\texttt{tests\_ordered} & List of all tests requested by the Doctor (for TR computation) \\
+\texttt{full\_dialogue} & Complete dialogue log for post-hoc analysis \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ----------------------------------------------------------
+\subsection{Deterministic Routing via \texttt{route\_doctor()}}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The \texttt{route\_doctor()} function is the conditional edge function in the DCG. After \texttt{doctor\_speaker} generates a response, this function inspects the output and state to determine the next node:
+\begin{itemize}
+    \item If output contains \texttt{REQUEST TEST: <test\_name>} $\rightarrow$ route to \texttt{measurement\_node}
+    \item If output contains \texttt{DIAGNOSIS READY: <diagnosis>} $\rightarrow$ route to \texttt{END}
+    \item If \texttt{turn\_count} $\geq$ \texttt{max\_turns} $\rightarrow$ route to \texttt{END}
+    \item Otherwise $\rightarrow$ route to \texttt{patient\_node} (continue dialogue)
+\end{itemize}
+\end{acadbox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+This prevents hallucinated workflow violations. The LLM cannot ``skip'' to a diagnosis without the routing function detecting it. It cannot order a test and simultaneously talk to the patient. Every transition is validated and logged.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Heterogeneous Multi-Engine Architecture}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+A \textbf{heterogeneous multi-engine architecture} uses \textbf{different model weights} for different agent roles. In v2: the Doctor runs on one model (e.g., Mistral-7B), while the Patient, Measurement, and Moderator run on separate, architecturally distinct model instances. This severs the shared embedding manifold, eliminating Lexical Leakage.
+\end{acadbox}
+
+\textbf{VRAM budget math (NVIDIA H100 NVL, 95.8 GB):}
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Component} & \textbf{FP16} & \textbf{NF4 + Double Quant} \\
+\midrule
+Doctor (7B) & 14 GB & $\sim$3.8 GB \\
+Patient (7B) & 14 GB & $\sim$3.8 GB \\
+Moderator (7B) & 14 GB & $\sim$3.8 GB \\
+KV-Cache (3 models) & --- & $\sim$6 GB \\
+Activations + overhead & --- & $\sim$4 GB \\
+\midrule
+\textbf{Total} & \textbf{$>$42 GB + overhead} & \textbf{$\sim$21.4 GB} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+NF4 quantisation makes the heterogeneous architecture \textit{feasible} within a single GPU.
+
+% ----------------------------------------------------------
+\subsection{4-Bit NF4 Quantisation with Double Quantisation}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{NormalFloat4 (NF4):} Pre-trained neural network weights follow a zero-mean Gaussian distribution. NF4 creates 16 non-linearly spaced quantisation bins that are information-theoretically optimal for $\mathcal{N}(0, \sigma^2)$ data---placing more bins in the dense central region and fewer in sparse tails.
+
+\textbf{Memory formula:}
+\[
+\text{VRAM}_{\text{model}} \approx \text{Params} \times \left(\frac{4 \text{ bits}}{8 \text{ bits/byte}}\right) + \text{KV-Cache Overhead}
+\]
+
+\textbf{Double quantisation:} Quantisation constants (one FP32 scalar per 64-weight block) are themselves quantised from FP32 to FP8, saving $\approx$0.37 bits per parameter.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+\textbf{NF4:} Imagine you have 16 colour labels to describe every pixel in a photo. Uniform quantisation would spread those 16 labels evenly across all possible colours---wasting labels on rarely-used extremes (neon green, pure white). NF4 says: ``Most pixels are medium-toned. Let me put 10 labels in the medium range and only 6 for extremes.'' It's smarter compression.
+
+\textbf{Double quantisation:} After compressing the photo, you also compress the legend/key that explains the compression. Meta-compression.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Flash Attention 2}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Standard self-attention computes $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$ and materialises the full $n \times n$ attention matrix in GPU memory, requiring $O(n^2)$ memory. For $n = 4096$ tokens, this is $\sim$64 million entries per head per layer.
+
+\textbf{Flash Attention 2} avoids materialising the full attention matrix by computing attention in \textbf{tiles} (blocks) that fit in GPU SRAM (fast on-chip memory). It uses online softmax computation and kernel fusion, reducing memory from $O(n^2)$ to $O(n)$ while maintaining exact mathematical equivalence.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine multiplying two huge spreadsheets. The naive way loads both entire spreadsheets into RAM---crashing your computer. Flash Attention is like processing the multiplication one small block at a time, only loading what fits in your computer's fast cache, and streaming results out. Same answer, much less memory.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Cognitive Bias Injection Manifold}
+
+\subsubsection{Recency Bias ($k = 5$ Case Memory Queue)}
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The system maintains a running FIFO queue of the $k = 5$ most recently processed case summaries. These are injected into the Doctor's system prompt, mimicking a physician overly influenced by recent clinical encounters. This exploits the transformer's natural tendency to assign elevated attention weights to tokens near the current generation boundary (positional recency effect in causal attention).
+\end{acadbox}
+
+\subsubsection{Confirmation Bias (Strong Prior Hypothesis Injection)}
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The Doctor is primed with a strong, \textbf{incorrect} initial hypothesis (e.g., ``You are initially confident the patient has malignancy.''). This warps the model's forward probability distribution toward confirmatory evidence acquisition, operationalising \textbf{premature diagnostic closure}---the model seeks evidence supporting its prior and discounts contradictions.
+\end{acadbox}
+
+% ----------------------------------------------------------
+\subsection{Task-Specific Dynamic LoRA Adapter Routing}
+
+This is arguably the most nuanced technical contribution of the thesis. It resolves the fundamental tension between domain specialisation and instruction alignment by decomposing the LLM's task into two independent sub-tasks, each served by a dedicated lightweight adapter.
+
+\subsubsection{The Problem: Why Can't We Just Fine-Tune the Whole Model?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Full fine-tuning} updates \textit{all} parameters of a pre-trained model on a downstream task. For a 7B-parameter model, this involves modifying all $\sim$7 billion weights via gradient descent. The process requires:
+\begin{itemize}
+    \item Full FP32 copies of model weights ($\sim$28 GB), gradients ($\sim$28 GB), and optimizer states ($\sim$56 GB for AdamW) $= \sim$112 GB just for a 7B model.
+    \item Risk of \textbf{catastrophic forgetting}: the gradient updates that improve medical QA accuracy systematically overwrite the attention weight distributions that originally supported conversational coherence, multi-step logical reasoning, and instruction following.
+\end{itemize}
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Full fine-tuning is like renovating an entire house to add a new kitchen. You might get an amazing kitchen, but in the process you accidentally rip out the plumbing, rewire the electricity wrong, and break the front door. LoRA is like adding a modular kitchen island that bolts onto the existing counter---you get the new functionality without touching (or destroying) anything else in the house.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+In Chapter 4, we observed that medically fine-tuned models (BioGPT 35\%, JSL-Med 32\%) \textit{underperformed} a generalist (Mistral-7B 44\%) in interactive simulation. This is because full medical SFT destroyed their conversational abilities. LoRA avoids this by keeping the base model frozen.
+\end{mattersbox}
+
+\subsubsection{What is LoRA? --- Deep Dive}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Low-Rank Adaptation (LoRA)} (Hu et al., 2022) is founded on the hypothesis that the \textit{intrinsic dimensionality} of task-specific weight updates is much smaller than the full parameter space. In other words, fine-tuning doesn't need to modify all 7 billion parameters---a tiny, structured perturbation in the right subspace is sufficient.
+
+Formally, for any pre-trained weight matrix $W_0 \in \mathbb{R}^{d \times k}$ (e.g., an attention projection matrix), LoRA freezes $W_0$ entirely and learns a low-rank additive update:
+\[
+W = W_0 + \Delta W = W_0 + BA
+\]
+where:
+\begin{itemize}
+    \item $B \in \mathbb{R}^{d \times r}$ --- the ``up-projection'' matrix (projects from rank $r$ to dimension $d$)
+    \item $A \in \mathbb{R}^{r \times k}$ --- the ``down-projection'' matrix (projects from dimension $k$ to rank $r$)
+    \item $r \ll \min(d, k)$ --- the \textbf{rank}, controlling adapter capacity
+    \item $\Delta W = BA$ has rank at most $r$ --- hence ``low-rank adaptation''
+\end{itemize}
+
+During training, \textbf{only} $B$ and $A$ receive gradients. $W_0$ is frozen (requires no gradient, no optimizer state). This reduces trainable parameters by orders of magnitude.
+\end{acadbox}
+
+\begin{examplebox}[\textcolor{white}{Worked Example: LoRA Parameter Count}]
+For a single attention projection matrix in Mistral-7B, $W \in \mathbb{R}^{4096 \times 4096}$:
+
+\textbf{Full fine-tuning:}
+\[
+4096 \times 4096 = 16{,}777{,}216 \text{ trainable parameters per matrix}
+\]
+
+\textbf{LoRA with $r = 16$:}
+\[
+B: 4096 \times 16 = 65{,}536 \quad + \quad A: 16 \times 4096 = 65{,}536 \quad = \quad 131{,}072 \text{ params}
+\]
+
+\textbf{Compression ratio:}
+\[
+\frac{16{,}777{,}216}{131{,}072} = 128\times \text{ fewer parameters}
+\]
+
+\textbf{Across the full model:} We apply LoRA to 4 projection matrices (Q, K, V, O) across 32 transformer layers:
+\[
+4 \text{ matrices} \times 32 \text{ layers} \times 131{,}072 \text{ params} = 16{,}777{,}216 \text{ total LoRA params} \approx 25 \text{ MB}
+\]
+
+That's 25 MB for an adapter vs 28 GB for the full model --- a $1{,}120\times$ reduction.
+\end{examplebox}
+
+\subsubsection{The Scaling Factor $\alpha$}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The effective LoRA update is scaled before being added to the base weights:
+\[
+W = W_0 + \frac{\alpha}{r} \cdot BA
+\]
+where $\alpha$ is a hyperparameter (we use $\alpha = 32$). The ratio $\frac{\alpha}{r}$ controls the \textbf{magnitude} of the adapter's influence:
+\begin{itemize}
+    \item $\frac{\alpha}{r} = \frac{32}{16} = 2.0$ --- the adapter's contribution is amplified by $2\times$
+    \item If $\alpha = r$, the scaling is $1.0$ (neutral)
+    \item Larger $\frac{\alpha}{r}$ means the adapter has a stronger effect on the base model's behaviour
+\end{itemize}
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Think of $\alpha / r$ as the volume knob on the adapter. $r$ is the complexity of the adapter (how many musical instruments it has). $\alpha$ is how loud those instruments play. With $r = 16$ and $\alpha = 32$, the adapter plays at $2\times$ volume---loud enough to meaningfully redirect the model's behaviour, but not so loud that it drowns out the base model entirely.
+\end{analogybox}
+
+\subsubsection{Which Layers Are Modified? (Target Modules)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+In our implementation, LoRA adapters are applied to \textbf{four attention projection matrices} in every transformer layer:
+\begin{center}
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{Matrix} & \textbf{Role} \\
+\midrule
+\texttt{q\_proj} ($W_Q$) & Projects input into \textbf{Query} space---controls ``what am I looking for?'' \\
+\texttt{k\_proj} ($W_K$) & Projects input into \textbf{Key} space---controls ``what am I offering as a match?'' \\
+\texttt{v\_proj} ($W_V$) & Projects input into \textbf{Value} space---controls ``what information do I carry?'' \\
+\texttt{o\_proj} ($W_O$) & Projects the multi-head output back---controls ``how do I combine what I found?'' \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+By targeting all four, the adapter can redirect \textit{what the model attends to}, \textit{what it matches against}, \textit{what values it retrieves}, and \textit{how it recombines information}---giving maximum expressiveness for minimal parameter cost.
+\end{acadbox}
+
+\subsubsection{The Two Adapters: Reasoning and Dialogue}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Two independent LoRA adapters are trained with identical hyperparameters ($r = 16$, $\alpha = 32$, target = \{q, k, v, o\}\_proj) but on \textbf{different data distributions}:
+
+\textbf{1. Reasoning Adapter} (\texttt{adapters/reasoning\_lora}):
+\begin{itemize}
+    \item \textbf{Training data:} Clinical case presentations $\rightarrow$ structured JSON differential diagnoses
+    \item \textbf{Format:} Input = patient history; Output = \texttt{["Disease A", "Disease B", "Disease C"]}
+    \item \textbf{Purpose:} Steers the LLM toward medical diagnostic reasoning and structured JSON output
+    \item \textbf{Activates during:} \texttt{doctor\_reflection} node (the private thinking step)
+    \item \textbf{Temperature:} $T = 0.1$ (deterministic, precise)
+\end{itemize}
+
+\textbf{2. Dialogue Adapter} (\texttt{adapters/dialogue\_lora}):
+\begin{itemize}
+    \item \textbf{Training data:} Patient statements $\rightarrow$ empathetic, targeted doctor follow-ups
+    \item \textbf{Format:} Input = patient utterance; Output = empathetic 1-3 sentence response
+    \item \textbf{Purpose:} Preserves conversational coherence, empathy, and structured question-asking
+    \item \textbf{Activates during:} \texttt{doctor\_speaker} node (the patient-facing dialogue)
+    \item \textbf{Temperature:} $T = 0.7$ (natural conversational variation)
+\end{itemize}
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy --- Extended}]
+Think of a doctor who puts on different ``thinking hats'' at different moments during a consultation:
+
+\textbf{Hat 1 --- The Medical Textbook Hat (Reasoning Adapter):}\\
+The doctor picks up their private notepad. They put on their ``textbook hat'' and write:\\
+\textit{``Based on symptoms, my top 3 guesses are: Pneumonia, COPD, Asthma.''}\\
+The patient never sees this notepad. The hat steers the doctor toward precise, clinical thinking.
+
+\textbf{Hat 2 --- The Bedside Manner Hat (Dialogue Adapter):}\\
+The doctor puts down the notepad and faces the patient. They switch to the ``bedside manner hat'' and say:\\
+\textit{``I understand you've been coughing for three weeks. Can you take a deep breath so I can listen to your lungs?''}\\
+This hat steers the doctor toward warm, empathetic, conversational communication.
+
+\textbf{Key insight:} It's the \textit{same brain} (same frozen base model) underneath both hats. The hats are tiny (25 MB each, vs the 3.8 GB brain). Swapping hats is instant. Neither hat damages the brain---they just redirect its focus.
+\end{analogybox}
+
+\subsubsection{How Adapter Routing Works in One Turn}
+
+The following shows exactly what happens at Turn 3 of a clinical simulation:
+
+\begin{verbatim}
+Turn 3:
+  Step 1: model.set_adapter("reasoning")     # Swap to reasoning hat
+          doctor_reflection executes at T=0.1
+          Output: ["Pneumonia", "COPD", "Asthma"]
+          Stored in ClinicalState.differential_trajectory
+          NOT shown to patient
+
+  Step 2: model.set_adapter("dialogue")      # Swap to dialogue hat  
+          doctor_speaker executes at T=0.7
+          Output: "I'd like to listen to your lungs. 
+                   Can you take a deep breath for me?"
+          Sent to patient, stored in full_dialogue
+
+  Step 3: route_doctor() inspects output:
+          No "REQUEST TEST" -> not measurement_node
+          No "DIAGNOSIS READY" -> not END
+          turn_count < max_turns -> route to patient_node
+          
+  Step 4: Patient responds -> cycle back to Step 1
+\end{verbatim}
+
+The adapter swap (\texttt{model.set\_adapter()}) is a \textbf{pointer swap}---it changes which set of $BA$ matrices are added to the frozen $W_0$. No weights are reloaded, no VRAM is reallocated. The swap takes $< 1$ millisecond.
+
+\subsubsection{Training the Adapters: QLoRA Pipeline}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{QLoRA (Quantised LoRA)} trains LoRA adapters on a 4-bit NF4 quantised base model. The base model weights are frozen in NF4 (4-bit); only the adapter matrices $B$ and $A$ are trained in full BF16 (16-bit) precision. This allows fine-tuning a 7B model on as little as $\sim$12 GB VRAM.
+
+\textbf{Critical design decision --- avoiding data leakage:}\\
+The adapters are trained on \texttt{agentclinic\_nejm.jsonl} (New England Journal of Medicine cases), while the evaluation experiments (E1--E6) run on \texttt{agentclinic\_medqa.jsonl} (MedQA scenarios). This strict train/test separation ensures the model cannot memorise evaluation answers during adapter training.
+\end{acadbox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+If we trained on the same data we evaluate on, the 54.7\% accuracy in E6 would be meaningless---the model would simply be recalling memorised answers, not demonstrating genuine reasoning improvement. By training on NEJM and evaluating on MedQA, we prove the adapters teach \textit{generalisable skills} (how to reason, how to converse), not case-specific answers.
+\end{mattersbox}
+
+\subsubsection{Why Dynamic LoRA Resolves the Trade-off}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The specialisation--alignment trade-off (Chapter 4) occurs because \textbf{monolithic weight modification} entangles domain knowledge and conversational skills in the same parameter space. Gradient updates that improve medical QA accuracy simultaneously degrade instruction-following and dialogue coherence.
+
+Dynamic LoRA resolves this by:
+\begin{enumerate}
+    \item \textbf{Decoupling:} Reasoning and dialogue are split into separate adapter subspaces that never interfere with each other.
+    \item \textbf{Preserving:} The frozen base model retains all its pre-trained general capabilities.
+    \item \textbf{Augmenting:} Each adapter adds only task-specific behaviour on top of the preserved base.
+\end{enumerate}
+
+\textbf{Result:} E6 (54.7\%) surpasses both E2 (50.2\%, domain knowledge only) \textit{and} E3 (53.5\%, instruction alignment only), achieving the best of both worlds.
+\end{acadbox}
+
+% ----------------------------------------------------------
+\subsection{Theoretical Underpinnings}
+
+\subsubsection{Decoupling Reasoning from Generation (Latent CoT)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Standard autoregressive generation: $P(w_t \mid w_1, \ldots, w_{t-1})$. When forced to simultaneously generate dialogue \textit{and} reason medically, self-attention heads must split capacity between syntactic fluency and semantic medical deduction. The reflection node addresses this by injecting high-information medical tokens (structured JSON DDx) into the context window \textit{before} dialogue generation. The \texttt{doctor\_speaker}'s attention heads then attend heavily to this JSON, constraining dialogue to align with prior reasoning.
+\end{acadbox}
+
+\subsubsection{Embedding Manifold Overlap and Lexical Leakage}
+
+When $\theta_{\text{Doctor}} = \theta_{\text{Patient}}$, both agents share $f_\theta$. Patient symptom embeddings and Doctor disease embeddings occupy the same manifold $\Rightarrow$ zero-shot knowledge transfer through geometric proximity. The heterogeneous architecture severs this: $\theta_{\text{Doctor}} \neq \theta_{\text{Patient}}$ forces genuine semantic deduction.
+
+\subsubsection{Information-Theoretic Basis of NF4}
+
+Pre-trained weights $\sim \mathcal{N}(0, \sigma^2)$. Uniform INT4 wastes bits on low-density tails. NF4 bins are placed at quantiles of the normal CDF, maximising mutual information $I(W; \hat{W})$ between the original weights $W$ and their quantised representations $\hat{W}$.
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 5}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} Why a cyclic graph and not a DAG?\\
+    \textbf{A:} Clinical consultation is inherently iterative---the doctor asks, receives, reflects, asks again. A DAG cannot revisit nodes, so it cannot model this cycle.
+
+    \item \textbf{Q:} What happens in the reflection node?\\
+    \textbf{A:} The LLM outputs a JSON array of top-3 differential diagnoses at $T = 0.1$. This is stored in the trajectory log but never shown to the patient.
+
+    \item \textbf{Q:} Explain LoRA in mathematical terms.\\
+    \textbf{A:} LoRA decomposes the weight update $\Delta W$ into $BA$ where $B \in \mathbb{R}^{d \times r}$ and $A \in \mathbb{R}^{r \times k}$ with $r = 16 \ll 4096$. This reduces trainable parameters by $128\times$ per matrix. The frozen base model $W_0$ is never modified, so pre-trained capabilities are preserved.
+
+    \item \textbf{Q:} What is $\alpha$ in LoRA and what does it control?\\
+    \textbf{A:} $\alpha$ is a scaling factor. The effective update is $\frac{\alpha}{r} \cdot BA$. With $\alpha = 32$ and $r = 16$, the scaling is $2\times$. This controls how strongly the adapter modifies the base model's behaviour---like a volume knob.
+
+    \item \textbf{Q:} Why do you target Q, K, V, and O projections?\\
+    \textbf{A:} These four matrices control the entire attention mechanism: what to look for (Q), what to match (K), what to extract (V), and how to combine (O). Targeting all four gives maximum adapter expressiveness.
+
+    \item \textbf{Q:} How does LoRA avoid catastrophic forgetting?\\
+    \textbf{A:} By freezing all 7 billion base parameters. Only the adapter matrices ($\sim$25 MB) receive gradients. The base model's conversational, reasoning, and instruction-following abilities are completely preserved.
+
+    \item \textbf{Q:} Why two separate adapters instead of one?\\
+    \textbf{A:} Because reasoning (structured medical JSON) and dialogue (empathetic conversation) are fundamentally different tasks. A single adapter would face the same entanglement problem as full fine-tuning. Separate adapters let each task optimise independently.
+
+    \item \textbf{Q:} Why did you train on NEJM data instead of MedQA data?\\
+    \textbf{A:} To avoid data leakage. If the adapter were trained on the same MedQA scenarios used for evaluation, it would memorise answers rather than learning generalisable reasoning skills. Training on NEJM and evaluating on MedQA proves the adapter teaches transferable clinical competence.
+
+    \item \textbf{Q:} What is the VRAM overhead of the dual LoRA adapters?\\
+    \textbf{A:} Approximately 50 MB combined (25 MB each)---negligible compared to the $\sim$3.8 GB NF4 base model. The adapter swap is a pointer operation taking $< 1$ ms.
+
+    \item \textbf{Q:} How does Flash Attention maintain mathematical equivalence?\\
+    \textbf{A:} It computes the exact same softmax attention output but using tiled computation with online softmax normalisation. No approximation is made; only the computation \textit{order} and memory layout change.
+
+    \item \textbf{Q:} How does confirmation bias injection exploit the transformer architecture?\\
+    \textbf{A:} A strong prior hypothesis is injected into the system prompt. Causal attention ensures all subsequent generated tokens attend to this hypothesis, biasing the forward probability distribution toward confirmatory token sequences.
+
+    \item \textbf{Q:} What is QLoRA and how does it relate to NF4?\\
+    \textbf{A:} QLoRA trains LoRA adapters on a 4-bit NF4 quantised base model. The base stays in NF4 (frozen, 4-bit), while adapters train in BF16 (full precision). This allows fine-tuning a 7B model on $\sim$12 GB VRAM.
+\end{enumerate}
+\end{vivabox}
+

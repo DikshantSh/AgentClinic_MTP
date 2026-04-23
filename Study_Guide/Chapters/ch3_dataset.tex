@@ -1,0 +1,121 @@
+% ============================================================
+%  CHAPTER 3 — DATASET
+% ============================================================
+\section{Chapter 3: Dataset --- AgentClinic-MedQA}
+\label{ch:dataset}
+
+% ----------------------------------------------------------
+\subsection{What is an OSCE?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+An \textbf{Objective Structured Clinical Examination (OSCE)} is a standardised medical assessment format used globally in medical education. Students rotate through ``stations,'' each presenting a simulated patient scenario. At each station, the student must take a history, perform a physical examination, order tests, and formulate a diagnosis---all within a time limit. OSCEs test procedural competence, not just factual recall.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+An OSCE is like a driving test: you don't just answer questions about road rules (that's the written test, analogous to MedQA). You actually sit in the car, drive on real roads, parallel park, and handle unexpected situations. The examiner watches your \textit{process}, not just whether you reach the destination.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+AgentClinic converts static MedQA vignettes into OSCE-style interactive simulations. Each scenario becomes a ``station'' where the LLM Doctor must navigate a multi-turn conversation, request specific tests, and declare a diagnosis---mirroring the OSCE format.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{The JSON Schema}
+
+Each scenario in the AgentClinic-MedQA dataset is parsed into a structured JSON format with five distinct modules:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{\texttt{Objective\_for\_Doctor}} --- A string describing the consultation objective.\\
+    \textit{Example:} ``Evaluate and diagnose the patient presenting with chest pain and shortness of breath.''\\
+    \textbf{Visibility:} Doctor Agent only.
+
+    \item \textbf{\texttt{Patient\_Actor}} --- Contains:
+    \begin{itemize}
+        \item Demographics (age, gender, social background)
+        \item History of Present Illness (HPI)
+        \item Primary and secondary symptoms
+        \item Past Medical and Social History
+    \end{itemize}
+    \textbf{Visibility:} Patient Agent only.
+
+    \item \textbf{\texttt{Test\_Results}} --- Laboratory results (CBC, BMP, cardiac enzymes), imaging summaries (X-ray, CT, MRI), and specialised tests (ECG, spirometry).\\
+    \textbf{Visibility:} Measurement Agent only. Disclosed to Doctor \textit{only} upon explicit, well-formed test request.
+
+    \item \textbf{\texttt{Physical\_Examination\_Findings}} --- Inspection, auscultation, palpation, and percussion findings (e.g., ``bilateral crackles on lung auscultation'').\\
+    \textbf{Visibility:} Measurement Agent only.
+
+    \item \textbf{\texttt{Correct\_Diagnosis}} --- The verified ground-truth disease label.\\
+    \textbf{Visibility:} Moderator Agent only. No active agent ever sees this.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Knowledge Partitioning}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Knowledge partitioning} is the strict information-theoretic separation of case data across agent roles. Each agent receives only its designated ``slice'' of the scenario. The Doctor sees only the consultation objective; the Patient holds the symptom narrative; the Measurement Agent holds test results; and the Moderator holds the ground truth. No agent can access another's partition.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Think of a relay race where each runner carries a different piece of a treasure map. Runner 1 (Doctor) has the compass directions. Runner 2 (Patient) has the landmark descriptions. Runner 3 (Measurement) has the distances. Runner 4 (Moderator) has the answer. No single runner can find the treasure alone---they must communicate and share information step-by-step.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+Knowledge partitioning is what makes AgentClinic a genuine test of clinical reasoning. If the Doctor could see the Patient's full symptom profile or the test results upfront, it would reduce to a static QA task. The partitioning forces the Doctor to \textit{earn} information through targeted questioning---exactly as a real physician must.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Semantic Evaluation by the Moderator Agent}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The Moderator Agent evaluates diagnostic correctness using \textbf{LLM-mediated semantic equivalence comparison} rather than exact string matching. Given the Doctor's predicted diagnosis $d_{\text{pred}}$ and the ground truth $d_{\text{true}}$, the Moderator outputs a binary judgement (``Yes'' / ``No'') after assessing whether the two are semantically equivalent.
+\end{acadbox}
+
+\textbf{Why not exact string matching?}\\
+Consider the following clinically equivalent pairs:
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Doctor's Prediction} & \textbf{Ground Truth} \\
+\midrule
+``Heart Attack'' & ``Acute Myocardial Infarction'' \\
+``Broken Arm'' & ``Distal Radius Fracture'' \\
+``Blood Clot in Lung'' & ``Pulmonary Embolism'' \\
+\bottomrule
+\end{tabular}
+\end{center}
+Exact string matching would mark all of these as \textit{incorrect}, despite being perfectly valid diagnoses. The LLM-mediated Moderator understands medical synonymy.
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+It's like having a bilingual teacher grade an exam. If a student answers ``Herzinfarkt'' (German for heart attack) and the answer key says ``Myocardial Infarction,'' a rigid grading machine fails them---but the bilingual teacher knows they mean the same thing.
+\end{analogybox}
+
+\subsection{Dataset Statistics}
+
+\begin{itemize}
+    \item \textbf{Total scenarios:} 107 high-quality, diverse diagnostic cases
+    \item \textbf{Source:} AgentClinic-MedQA subset (derived from USMLE-style vignettes)
+    \item \textbf{Organ system coverage:} Cardiovascular, respiratory, gastrointestinal, neurological, musculoskeletal, endocrine, renal, infectious disease
+    \item \textbf{Maximum turns per scenario:} 10 multi-turn inference steps
+\end{itemize}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 3}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} What is an OSCE and how does AgentClinic simulate it?\\
+    \textbf{A:} An OSCE is a practical clinical exam with simulated patient ``stations.'' AgentClinic converts each MedQA vignette into an OSCE station where the LLM Doctor must interactively extract information, order tests, and diagnose---replicating the procedural nature of an OSCE.
+
+    \item \textbf{Q:} Why did you use only 107 scenarios?\\
+    \textbf{A:} Each scenario requires multiple LLM inference passes per turn (Doctor, Patient, Measurement, Moderator) across 10 turns. With 4-bit quantised models on a single H100, each full experiment takes substantial compute. 107 scenarios provide sufficient statistical power while remaining computationally feasible.
+
+    \item \textbf{Q:} Why not use exact string matching for evaluation?\\
+    \textbf{A:} Medical terminology has extensive synonymy. ``Heart Attack'' and ``Acute Myocardial Infarction'' are identical diagnoses but different strings. LLM-mediated semantic evaluation captures clinical equivalence.
+
+    \item \textbf{Q:} What does knowledge partitioning prevent?\\
+    \textbf{A:} It prevents the Doctor from having access to information it hasn't earned through dialogue. Without partitioning, the evaluation reduces to a static QA task, defeating the purpose of interactive simulation.
+
+    \item \textbf{Q:} Could the Moderator itself make errors in semantic comparison?\\
+    \textbf{A:} Yes---this is a known limitation. However, LLM-mediated semantic comparison has been shown to correlate highly with expert human judgement, and is superior to rigid string matching for clinical terminology.
+\end{enumerate}
+\end{vivabox}

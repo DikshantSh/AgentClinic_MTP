@@ -1,0 +1,119 @@
+% ============================================================
+%  CHAPTER 4 — INITIAL FRAMEWORK (PHASE 1)
+% ============================================================
+\section{Chapter 4: Initial Framework (Phase 1)}
+\label{ch:initial}
+
+% ----------------------------------------------------------
+\subsection{Architecture: Ad-Hoc While-Loop Orchestrator}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+The initial framework employed a Python \texttt{while}-loop to sequentially route messages between the Doctor, Patient, and Measurement agents. The loop iterated for a fixed number of turns (typically 10) or until the Doctor emitted a \texttt{DIAGNOSIS READY} token. This design was functional but lacked formal state management, deterministic routing, or trajectory recording.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine a school play where the actors have no script. A stage manager just says ``your turn, your turn, your turn'' in a loop. Sometimes actors talk out of order, sometimes they freeze, and nobody records what happened. That's the while-loop orchestrator---it works most of the time, but has no formal rules and breaks unpredictably.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Models Tested and Results}
+
+Four open-source models were evaluated on 107 AgentClinic-MedQA scenarios:
+
+\begin{center}
+\begin{tabular}{@{}llc@{}}
+\toprule
+\textbf{Model} & \textbf{Training Data Alignment} & \textbf{Accuracy (\%)} \\
+\midrule
+Mistral-7B-Instruct-v0.2 & General instruction-tuning & \textbf{44.0} \\
+Microsoft BioGPT (1.5B)  & Biomedical literature (PubMed) & 35.0 \\
+JSL-Med-Sft-Llama-3-8B   & Clinical + Biomedical SFT & 32.0 \\
+Apollo (7B)               & General text corpora & 23.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The paradox:} The generalist Mistral-7B (44\%) \textit{outperformed} all medically fine-tuned models. This demands explanation.
+
+% ----------------------------------------------------------
+\subsection{Catastrophic Forgetting}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Catastrophic forgetting} occurs when fine-tuning a pre-trained neural network on a narrow downstream task causes the model to ``forget'' the broad capabilities it learned during pre-training. In the context of medical SFT (Supervised Fine-Tuning), optimising on static QA pairs (e.g., USMLE-style questions) erodes the model's general-purpose instruction-following, conversational coherence, and multi-step logical reasoning abilities.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine a chess grandmaster who decides to study \textit{only} the Sicilian Defence opening for 6 months. After that intensive study, they know every Sicilian variation perfectly---but they've forgotten how to play the middlegame and endgame. They lose to average players in positions outside their narrow specialty. That's catastrophic forgetting: narrow expertise destroying broad competence.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+BioGPT (35\%) and JSL-Med (32\%) possess superior biomedical \textit{knowledge} but have lost the conversational \textit{skills} needed to navigate a 10-turn interactive simulation. Mistral-7B's broader instruction-tuning preserved its ability to ask follow-up questions, interpret test results contextually, and maintain coherent dialogue flow. This finding directly motivated the Dynamic LoRA approach in v2 (Chapter 5), which separates domain knowledge from conversational skills.
+\end{mattersbox}
+
+\textbf{Why does this happen mechanically?}
+\begin{itemize}
+    \item Medical SFT datasets are typically formatted as single-turn QA pairs: ``Question: [vignette]. Answer: [diagnosis].''
+    \item Training on these pairs optimises the model's attention patterns for \textit{immediate} pattern-matching, not for multi-turn hypothesis refinement.
+    \item The gradient updates during SFT overwrite the attention weight distributions that previously supported conversational coherence and sequential reasoning.
+    \item Result: the model can answer ``What disease has these symptoms?'' but cannot ask ``What other symptoms do you have?''
+\end{itemize}
+
+% ----------------------------------------------------------
+\subsection{Bias Impact Analysis (Phase 1)}
+
+Preliminary prompt-based bias injections were applied to the best-performing model (Mistral-7B, 44\% unbiased):
+
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Bias Type} & \textbf{Accuracy (\%)} & \textbf{Drop from Baseline} \\
+\midrule
+None (Unbiased)     & 44.0 & --- \\
+Recency Bias        & 34.0 & $-$10.0 pp \\
+Gender Bias         & 35.0 & $-$9.0 pp \\
+Confirmation Bias   & 32.0 & $-$12.0 pp \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Confirmation bias caused the greatest degradation ($-$12 pp), as the model anchored to an initial incorrect hypothesis and selectively amplified supporting evidence while discounting contradictory symptoms.
+
+% ----------------------------------------------------------
+\subsection{Three Critical Architectural Flaws Identified}
+
+\begin{enumerate}[label=\textbf{Flaw \arabic*:}]
+    \item \textbf{Non-Deterministic Execution:} The \texttt{while}-loop frequently failed to handle agent transitions when the LLM generated malformed stop tokens, leading to simulation crashes or silent skips. There was no formal state machine to enforce valid transitions.
+    
+    \item \textbf{No Trajectory Analysis:} Only the terminal diagnosis was evaluated. A model that guessed correctly without ordering \textit{any} diagnostic tests received the same score as a methodical, evidence-driven clinician. The \textit{how} of reasoning was invisible.
+    
+    \item \textbf{Lexical Leakage Vulnerability:} Due to VRAM constraints, a \textit{homogeneous engine} was used: identical Mistral-7B weights generated both the Patient's symptoms and the Doctor's diagnosis. The Doctor could subconsciously access ground truth through the shared embedding manifold (see Chapter 1 definition).
+\end{enumerate}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+These three flaws were the \textit{direct motivation} for building AgentClinic v2. Flaw 1 $\rightarrow$ LangGraph DCG. Flaw 2 $\rightarrow$ Metacognitive reflection node + process metrics. Flaw 3 $\rightarrow$ Heterogeneous multi-engine + NF4 quantisation.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 4}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} Why did the generalist Mistral-7B outperform medically fine-tuned models?\\
+    \textbf{A:} Catastrophic forgetting. BioGPT and JSL-Med were fine-tuned on static medical QA pairs, which eroded their conversational and multi-turn reasoning capabilities---skills essential for interactive simulation.
+
+    \item \textbf{Q:} Is 44\% accuracy acceptable for clinical AI?\\
+    \textbf{A:} No---it means more than half of diagnoses are wrong. However, the Phase 1 goal was \textit{feasibility demonstration}, not deployment readiness. We showed that open-source LLMs \textit{can} navigate multi-turn clinical conversations at all.
+
+    \item \textbf{Q:} Could the 44\% be inflated by Lexical Leakage?\\
+    \textbf{A:} Yes---this is exactly the concern. A homogeneous architecture was used due to VRAM constraints. The v2 experiment (E1) demonstrated that removing Leakage via heterogeneous engines \textit{increased} accuracy to 45.6\%, proving the scaffold matters more than the leakage.
+
+    \item \textbf{Q:} What is the difference between anchoring bias and confirmation bias?\\
+    \textbf{A:} Anchoring creates the wrong hypothesis (over-reliance on first information). Confirmation bias \textit{maintains} the wrong hypothesis by selectively seeking supporting evidence.
+
+    \item \textbf{Q:} Why did you test bias on only Mistral-7B?\\
+    \textbf{A:} It was the best-performing model. Testing bias on already-failing models would not provide useful signal. The goal was to measure how bias degrades the strongest baseline.
+
+    \item \textbf{Q:} What is a while-loop orchestrator and why is it problematic?\\
+    \textbf{A:} A simple Python loop that alternates turns between agents. It's problematic because it has no formal state management---if the LLM generates unexpected output (malformed tokens, missing stop signals), the loop has no recovery mechanism, leading to crashes or invalid states.
+\end{enumerate}
+\end{vivabox}

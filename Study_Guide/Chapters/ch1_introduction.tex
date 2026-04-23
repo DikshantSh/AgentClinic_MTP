@@ -1,0 +1,145 @@
+% ============================================================
+%  CHAPTER 1 — INTRODUCTION
+% ============================================================
+\section{Chapter 1: Introduction}
+\label{ch:intro}
+
+% ----------------------------------------------------------
+\subsection{Main Objective of the Project}
+
+\begin{acadbox}[\textcolor{white}{Project Objective}]
+\textbf{Title:} Design and Evaluation of Multi-Agent LLM Systems for Interactive Clinical Diagnosis
+
+\textbf{Objective:} To design, implement, and rigorously evaluate a multi-agent simulation framework that tests open-source LLMs not on \textit{what} they diagnose, but on \textit{how} they reason---capturing the full cognitive trajectory of a clinical consultation rather than just the final answer.
+\end{acadbox}
+
+\subsubsection{Central Research Question}
+
+\begin{mattersbox}[\textcolor{white}{The Core Question}]
+\textit{Can open-source LLMs, when placed inside a structured multi-agent simulation that mirrors real clinical workflows, demonstrate safe and rational diagnostic reasoning---and can we measure that reasoning beyond simple accuracy?}
+\end{mattersbox}
+
+\subsubsection{How We Achieved It --- Three Phases}
+
+\begin{enumerate}[label=\textbf{Phase \arabic*:}, leftmargin=2.5cm]
+    \item \textbf{Baseline Benchmarking (Initial Framework):}
+    \begin{itemize}
+        \item Built a multi-agent simulation with Doctor, Patient, and Measurement agents using an ad-hoc \texttt{while}-loop
+        \item Benchmarked 4 open-source LLMs (Mistral-7B, BioGPT, JSL-Med, Apollo)
+        \item Discovered \textit{Lexical Leakage} and \textit{catastrophic forgetting} in medically fine-tuned models
+        \item \textbf{Key finding:} Generalist Mistral-7B (44\%) outperformed all specialist models
+    \end{itemize}
+
+    \item \textbf{Architecture Redesign (AgentClinic v2):}
+    \begin{itemize}
+        \item Replaced the ad-hoc loop with a \textbf{LangGraph Directed Cyclic Graph} state machine
+        \item Implemented \textbf{heterogeneous multi-engine isolation} (NF4 quantisation) to eliminate Lexical Leakage
+        \item Introduced the \textbf{latent metacognitive reflection node} to make internal reasoning observable
+        \item Formalised three process metrics: Diagnostic Stability, Test Rationality, Information Efficiency
+        \item \textbf{Key finding:} Structured metacognition alone improved accuracy from 44.0\% to 45.6\%, compensating for Lexical Leakage removal
+    \end{itemize}
+
+    \item \textbf{Advanced Experimentation (E1--E6):}
+    \begin{itemize}
+        \item Ran 6 experiments across 107 MedQA scenarios with bias injection and LoRA routing
+        \item Showed that instruction alignment (E3: 53.5\%) matters more than domain fine-tuning (E2: 50.2\%) for interactive tasks
+        \item Demonstrated that cognitive biases are a critical safety threat (E4: 38.1\%, E5: 31.4\%)
+        \item Resolved the specialisation--alignment trade-off with Dynamic LoRA adapters (E6: 54.7\%)
+        \item \textbf{Key finding:} Process metrics reveal dangerous failure modes that accuracy alone completely masks
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{The Answer to the Research Question}
+
+\begin{acadbox}[\textcolor{white}{Summary Answer}]
+\textbf{Yes, but with critical caveats.} Open-source LLMs can perform interactive clinical reasoning when given proper architectural scaffolding (LangGraph DCG + metacognitive reflection). However:
+\begin{itemize}
+    \item The best accuracy achieved was 54.7\% (E6 with Dynamic LoRA)---roughly 1 in 2 diagnoses are wrong
+    \item Cognitive biases degrade performance catastrophically (down to 31.4\%) and can be \textit{invisible} to accuracy-only evaluation
+    \item Process metrics (DS, TR, IE) are essential for safety evaluation---a model can appear ``confidently consistent'' ($DS = 0.88$) while being systematically wrong
+\end{itemize}
+\textbf{Conclusion:} Clinical LLMs are not ready for deployment, but the evaluation methodology developed here provides the tools to measure and improve their readiness.
+\end{acadbox}
+
+% ----------------------------------------------------------
+\subsection{Why Static Medical QA Benchmarks Are Insufficient}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Static medical QA benchmarks---such as MedQA, USMLE Step examinations, PubMedQA, and MedMCQA---evaluate a model's ability to select the correct answer from a fully-specified clinical vignette presented in a single prompt. All patient history, vital signs, and investigation results are provided upfront. These benchmarks measure \textbf{declarative medical knowledge retrieval}, not \textbf{procedural clinical reasoning}.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine an exam where the question already tells you everything: ``A 55-year-old man has chest pain, elevated troponin, and ST-elevation on ECG. What is the diagnosis?'' That's MedQA---it's an open-book exam where the answer is almost in the question. Now imagine a \textit{real} doctor who sees a patient walk in and say ``My chest hurts.'' The doctor must decide: What questions do I ask? What tests do I order? Should I get an ECG first or blood work? \textit{That} is what AgentClinic tests---the thinking process, not just the final answer.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+This thesis argues that passing MedQA $\neq$ being a competent clinical AI. The entire motivation for building AgentClinic is to create an evaluation that tests the \textit{journey}, not just the \textit{destination}.
+\end{mattersbox}
+
+\subsubsection{One-Shot Factual Recall vs.\ Interactive Multi-Turn Reasoning}
+
+\begin{itemize}[leftmargin=1.5cm]
+    \item \textbf{One-shot factual recall:} All information is given at once. The model selects from pre-defined choices. No follow-up, no uncertainty, no evidence acquisition.
+    \item \textbf{Interactive multi-turn reasoning:} Information is \textit{hidden}. The model must actively decide what to ask, what to test, how to update hypotheses, and when to stop. This mirrors real clinical practice where diagnosis unfolds over 10--30 minutes of iterative doctor--patient interaction.
+\end{itemize}
+
+% ----------------------------------------------------------
+\subsection{What is Lexical Leakage?}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Lexical Leakage} occurs in homogeneous multi-agent LLM simulations where the same model weights ($\theta_{\text{shared}}$) are used for both the Doctor and Patient agents. Because both agents project text into identical high-dimensional embedding manifolds, the Doctor can perform \textbf{zero-shot knowledge transfer} by recognising the mathematical proximity of the Patient's generated token embeddings within this shared space.
+
+Formally: when $\text{Doctor}(\theta) = \text{Patient}(\theta)$, the Patient's symptom embeddings $\mathbf{h}_{\text{patient}} = f_\theta(\text{symptoms})$ and the Doctor's disease representations $\mathbf{h}_{\text{doctor}} = f_\theta(\text{disease})$ occupy \textbf{overlapping regions} of the same embedding manifold. The Doctor may infer ground-truth diagnostic information not through genuine clinical reasoning, but through implicit geometric similarity detection in the latent space.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine an exam where the student and the answer-key-maker share the same brain. The student doesn't ``cheat'' consciously---but because they share the same neural wiring, the student subconsciously recognises patterns from the answer key. That's Lexical Leakage: the Doctor doesn't explicitly see the Patient's ground truth, but the shared mathematical structure of their representations creates an unfair back-channel of information.
+\end{analogybox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+In the initial framework, a single Mistral-7B was used for \textit{both} Doctor and Patient. The 44\% accuracy achieved might have been partially inflated by Lexical Leakage. This motivated the heterogeneous multi-engine architecture in AgentClinic v2.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Problem Statement: Four Key Research Gaps}
+
+This thesis addresses four critical gaps:
+\begin{enumerate}[label=\textbf{Gap \arabic*:}, leftmargin=2.5cm]
+    \item \textbf{No interactive open-source frameworks} --- Existing systems rely on proprietary APIs (GPT-4) or lack the modularity for controlled experimentation.
+    \item \textbf{Lexical Leakage vulnerability} --- Homogeneous multi-agent systems allow the Doctor to implicitly access ground truth through shared embedding manifolds.
+    \item \textbf{No process evaluation} --- Only terminal diagnostic accuracy is measured; the cognitive trajectory, stability, and rationality of reasoning are ignored.
+    \item \textbf{No controlled bias modelling} --- No systematic mechanism exists to inject and measure the impact of cognitive biases (anchoring, confirmation, recency) on LLM clinical reasoning.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Contributions (Five Key Contributions)}
+
+\begin{enumerate}
+    \item \textbf{Baseline open-source benchmarking:} First systematic evaluation of 4 open-source LLMs (Mistral-7B, BioGPT, JSL-Med, Apollo) in interactive clinical simulation, revealing Lexical Leakage and catastrophic forgetting.
+    \item \textbf{Lexical Leakage mitigation:} Heterogeneous multi-engine architecture using NF4 double quantisation to run 3+ distinct models on a single GPU.
+    \item \textbf{LangGraph DCG + Metacognitive Reflection:} Deterministic state machine with a latent reflection node that makes internal reasoning observable.
+    \item \textbf{Three novel process metrics:} Diagnostic Stability (DS), Test Rationality (TR), Information Efficiency (IE).
+    \item \textbf{Dynamic LoRA adapter routing:} Task-specific adapters for reasoning vs.\ dialogue, achieving the highest accuracy (54.7\%) by resolving the specialisation--alignment trade-off.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 1}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} Why can't we just use MedQA scores to evaluate clinical AI?\\
+    \textbf{A:} MedQA provides all information upfront. Real diagnosis requires iterative evidence acquisition, hypothesis refinement, and uncertainty management---skills MedQA never tests.
+    
+    \item \textbf{Q:} Can you explain Lexical Leakage in mathematical terms?\\
+    \textbf{A:} When Doctor and Patient share weights $\theta$, their embedding functions $f_\theta$ produce vectors in the same manifold. The Doctor detects geometric proximity between symptom embeddings and disease embeddings, gaining implicit access to ground truth.
+    
+    \item \textbf{Q:} Why is Lexical Leakage dangerous rather than helpful?\\
+    \textbf{A:} It inflates accuracy artificially, making the model appear more capable than it actually is. In deployment, the Doctor would interact with real patients (not LLM-generated ones), so this back-channel would not exist.
+    
+    \item \textbf{Q:} What is your most important contribution?\\
+    \textbf{A:} The latent metacognitive reflection node, which forces the LLM to ``think before it speaks,'' enabling trajectory-aware evaluation and demonstrating that structured metacognition eclipses Lexical Leakage.
+    
+    \item \textbf{Q:} How does your work differ from AMIE or Agent Hospital?\\
+    \textbf{A:} AMIE is closed-source and proprietary. Agent Hospital uses homogeneous agents (vulnerable to Lexical Leakage). Our system is open-source, heterogeneous, deterministic, and provides process-level metrics.
+\end{enumerate}
+\end{vivabox}

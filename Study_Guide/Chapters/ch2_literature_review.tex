@@ -1,0 +1,181 @@
+% ============================================================
+%  CHAPTER 2 — LITERATURE REVIEW
+% ============================================================
+\section{Chapter 2: Literature Review}
+\label{ch:litreview}
+
+% ----------------------------------------------------------
+\subsection{Medical Question Answering Benchmarks}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{MedQA} is a large-scale open-domain QA dataset sourced from the US Medical Licensing Examination (USMLE). Models receive a complete patient vignette and select from multiple-choice answers. Similar benchmarks include \textbf{PubMedQA} (biomedical literature comprehension), \textbf{MedMCQA} (Indian medical entrance exams), and \textbf{MMLU Clinical Topics} (multi-task language understanding).
+
+GPT-4 has achieved $>$90\% accuracy on USMLE, surpassing expert human scores. However, these benchmarks test only \textbf{knowledge retrieval from a pre-specified context}---they never require the model to decide what information to seek.
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+MedQA is like a ``fill-in-the-blank'' test where all the clues are already on the page. The student just needs to recognise the pattern. AgentClinic is like a practical exam where you walk into a room, meet a patient, and must figure out what's wrong from scratch---asking the right questions, ordering the right tests.
+\end{analogybox}
+
+\textbf{What they test:} Factual recall, clinical guideline application, pattern recognition.\\
+\textbf{What they miss:} Information acquisition strategy, hypothesis evolution, multi-turn dialogue management, test ordering rationality, clinical uncertainty handling.
+
+% ----------------------------------------------------------
+\subsection{Dialogue-Based Simulations: AMIE and Agent Hospital}
+
+\subsubsection{AMIE (Articulate Medical Intelligence Explorer)}
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+AMIE is Google's conversational diagnostic AI system. It demonstrated improved diagnostic accuracy in simulated multi-turn conversations and was evaluated by both clinicians and patients against real physicians. \textbf{Limitations:} AMIE is closed-source, relies entirely on proprietary models, and lacks the modularity required for scientific replication or controlled bias injection.
+\end{acadbox}
+
+\subsubsection{Agent Hospital}
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Agent Hospital provides an evolvable hospital simulacrum using LLM agents. It simulates patient triage, diagnosis, and treatment workflows. \textbf{Critical limitation:} It uses \textbf{homogeneous agent designs}---the same model for all roles---which this thesis identifies as vulnerable to \textit{Lexical Leakage}. Furthermore, it functions as an end-to-end benchmark rather than an extensible research tool.
+\end{acadbox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]
+Neither AMIE nor Agent Hospital provides: (a) open-source access, (b) heterogeneous agent isolation, (c) controlled bias injection, or (d) process-oriented metrics. AgentClinic v2 addresses all four.
+\end{mattersbox}
+
+% ----------------------------------------------------------
+\subsection{Cognitive Biases in Clinical AI}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{Cognitive biases} are systematic deviations from normative reasoning that affect human (and LLM) diagnostic decisions. Three are studied in this thesis:
+\end{acadbox}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+    \item \textbf{Anchoring Bias:} Over-reliance on the first piece of information encountered.\\
+    \textit{Medical example:} A doctor sees ``chest pain'' and immediately anchors on ``heart attack,'' ignoring later evidence suggesting costochondritis (rib inflammation).
+    
+    \item \textbf{Confirmation Bias:} Seeking evidence that confirms an existing hypothesis while ignoring contradictory evidence.\\
+    \textit{Medical example:} A doctor suspects pneumonia, orders a chest X-ray (confirming), but ignores the patient's travel history suggesting malaria.
+    
+    \item \textbf{Recency Bias:} Disproportionate weight given to the most recently encountered cases.\\
+    \textit{Medical example:} After seeing 5 consecutive cardiac patients, a doctor diagnoses the 6th patient (who has acid reflux) with a cardiac condition.
+\end{enumerate}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+\textbf{Anchoring:} Like a GPS that locks onto the first satellite it finds and refuses to recalculate.\\
+\textbf{Confirmation:} Like only reading news that agrees with your opinion.\\
+\textbf{Recency:} Like a sports commentator who predicts tomorrow's match based only on yesterday's result.
+\end{analogybox}
+
+% ----------------------------------------------------------
+\subsection{Open-Source LLMs: Architectures}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+All models used in this thesis are \textbf{decoder-only transformers}---autoregressive models that predict the next token conditioned on all previous tokens: $P(w_t \mid w_1, \ldots, w_{t-1})$.
+\end{acadbox}
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Model} & \textbf{Parameters} & \textbf{Architecture} & \textbf{Training Focus} \\
+\midrule
+Mistral-7B-Instruct-v0.2 & 7.24B & Decoder-only, GQA, SWA & General instruction-tuning \\
+Llama-3.1-8B-Instruct & 8.03B & Decoder-only, GQA & Instruction alignment \\
+Mixtral-8x7B & 46.7B (12.9B active) & Mixture-of-Experts & Sparse expert routing \\
+JSL-MedMistral-7B & 7.24B & Mistral base + medical SFT & Clinical/biomedical \\
+BioGPT (1.5B) & 1.5B & Decoder-only & PubMed abstracts \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Key architectural features:}
+\begin{itemize}
+    \item \textbf{GQA (Grouped-Query Attention):} Shares key-value heads across query groups, reducing KV-cache memory by $\sim$4$\times$.
+    \item \textbf{SWA (Sliding Window Attention):} Mistral uses a 4096-token sliding window, enabling efficient long-context processing.
+    \item \textbf{MoE (Mixture of Experts):} Mixtral routes each token to 2 of 8 expert FFN layers, using only 12.9B of 46.7B parameters per forward pass.
+\end{itemize}
+
+% ----------------------------------------------------------
+\subsection{Quantisation Techniques}
+
+\subsubsection{Why Quantisation is Needed}
+A 7B-parameter model in FP16 (16-bit floating point) requires:
+\[
+7 \times 10^9 \text{ params} \times 2 \text{ bytes/param} = 14 \text{ GB VRAM}
+\]
+Running 3 heterogeneous models simultaneously would require $\sim$42 GB in FP16 \textit{before} accounting for KV-cache and activation memory---infeasible on most GPUs.
+
+\subsubsection{NF4 (NormalFloat4) Quantisation}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{NormalFloat4 (NF4)} is an information-theoretically optimal 4-bit data type for normally distributed data. Pre-trained neural network weights typically follow a zero-mean Gaussian distribution $\mathcal{N}(0, \sigma^2)$. Standard uniform quantisation (INT4/INT8) wastes bit capacity on sparse outlier regions. NF4 creates \textbf{non-linearly spaced quantisation bins} that place more bins in the high-density central region where the majority of weights reside, and fewer bins in the tails.
+\end{acadbox}
+
+\begin{examplebox}[\textcolor{white}{Worked Example: Memory Savings (FP32 → NF4)}]
+\textbf{FP32 (32-bit):}
+\[
+7\text{B} \times 4 \text{ bytes} = 28 \text{ GB}
+\]
+\textbf{FP16 (16-bit):}
+\[
+7\text{B} \times 2 \text{ bytes} = 14 \text{ GB}
+\]
+\textbf{NF4 (4-bit):}
+\[
+7\text{B} \times 0.5 \text{ bytes} = 3.5 \text{ GB}
+\]
+Plus quantisation constants overhead ($\sim$0.3 GB) $\Rightarrow$ \textbf{$\approx$3.8 GB total}.\\
+\textbf{Reduction:} $\frac{28 - 3.8}{28} \times 100 = 86.4\%$ memory savings from FP32.
+\end{examplebox}
+
+\subsubsection{Double Quantisation}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Standard block-wise quantisation stores a FP32 scaling constant per block of 64 weights, adding $\frac{32}{64} = 0.5$ bits per parameter. \textbf{Double quantisation} applies a second round of quantisation \textit{to the quantisation constants themselves}, compressing them from FP32 to FP8. This recovers $\approx$0.37 bits per parameter:
+\[
+\text{Savings} = 0.5 - \frac{8}{64} - \frac{32}{64 \times 256} = 0.37 \text{ bits/param}
+\]
+\end{acadbox}
+
+\begin{analogybox}[\textcolor{white}{Simple Analogy}]
+Imagine you compress a photo. The compression algorithm uses a ``codebook'' to remember how to decompress. Double quantisation is like compressing the codebook itself---saving space on the thing that saves space.
+\end{analogybox}
+
+\subsubsection{QLoRA}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+\textbf{QLoRA (Quantised LoRA)} combines NF4 quantisation of base model weights with Low-Rank Adaptation (LoRA) adapters trained in FP16/BF16. The base model is frozen in 4-bit; only the small LoRA matrices ($\Delta W = BA$) are trainable in full precision. This allows fine-tuning of a 7B model on a single consumer GPU ($\sim$12 GB VRAM).
+\end{acadbox}
+
+% ----------------------------------------------------------
+\subsection{Summary of Five Research Gaps}
+
+\begin{enumerate}
+    \item Static QA benchmarks do not emulate multi-step, sequential clinical reasoning.
+    \item Existing simulation frameworks lack modularity, transparency, and open-source compatibility.
+    \item Lexical Leakage in homogeneous multi-agent systems artificially inflates diagnostic accuracy.
+    \item Bias modelling is superficial or absent, precluding rigorous safety analysis.
+    \item Process-oriented evaluation metrics (trajectory, stability, test rationality) are absent from existing frameworks.
+\end{enumerate}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 2}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} What is the key difference between MedQA and AgentClinic?\\
+    \textbf{A:} MedQA provides all information upfront for one-shot recall; AgentClinic requires iterative, multi-turn evidence acquisition and hypothesis refinement.
+
+    \item \textbf{Q:} Why are AMIE's results not directly comparable to yours?\\
+    \textbf{A:} AMIE uses proprietary, closed-source models and does not provide open-source access for replication. Our work uses exclusively open-source models.
+
+    \item \textbf{Q:} Explain NF4 quantisation in one sentence.\\
+    \textbf{A:} NF4 maps neural network weights---which are approximately Gaussian---into 4-bit bins that are optimally spaced for that distribution, preserving statistical fidelity while reducing memory by $\sim$86\%.
+
+    \item \textbf{Q:} What is double quantisation and how much does it save?\\
+    \textbf{A:} It quantises the FP32 scaling constants used in block-wise quantisation down to FP8, recovering $\approx$0.37 bits per parameter.
+
+    \item \textbf{Q:} Why did you choose Mistral-7B as a baseline over GPT-4?\\
+    \textbf{A:} Our thesis focuses on open-source, locally deployable models. GPT-4 results exist in the literature but are not reproducible, not transparent, and impractical for controlled multi-agent simulations requiring heterogeneous engine isolation.
+
+    \item \textbf{Q:} What is a decoder-only transformer?\\
+    \textbf{A:} A model that generates text left-to-right, predicting each token based on all previous tokens: $P(w_t | w_{<t})$. Unlike encoder-decoder models (T5), it has no separate encoding stage.
+
+    \item \textbf{Q:} How does confirmation bias differ from anchoring bias?\\
+    \textbf{A:} Anchoring is over-reliance on the \textit{first} piece of information. Confirmation is selectively seeking evidence that \textit{supports} an existing hypothesis. Anchoring creates the hypothesis; confirmation bias maintains it.
+\end{enumerate}
+\end{vivabox}

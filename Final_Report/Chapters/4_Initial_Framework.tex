@@ -84,4 +84,4 @@ While the initial prototype was successfully implemented, severe structural flaw
     \item \textbf{Lexical Leakage Vulnerability:} Due to VRAM constraints, a \textit{homogeneous engine} was employed: the same Mistral-7B weights generated both the patient's symptoms and the doctor's diagnosis. Theoretical analysis revealed that these shared model weights cause both agents to project text into identical latent embedding manifolds. The Doctor agent may therefore subconsciously ``recognise'' the mathematical structure of the Patient's generated text, gaining implicit access to ground-truth information---a phenomenon formalised in this thesis as \textbf{Lexical Leakage}.
 \end{enumerate}
 
-These limitations collectively motivated the development of AgentClinic~v2.1, described in the following chapter.
+These limitations collectively motivated the development of AgentClinic~v2, described in the following chapter.

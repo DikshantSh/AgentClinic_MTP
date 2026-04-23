@@ -1,0 +1,366 @@
+% ============================================================
+%  APPENDIX A — COMPLETE CODE WORKFLOW
+% ============================================================
+\clearpage
+\section{Appendix A: Complete Code Workflow}
+\label{ch:workflow}
+
+This appendix traces the \textbf{entire execution flow} of \texttt{agentic\_clinic\_future\_scope.py} from command-line invocation to final JSONL output. Understanding this flow is critical for viva preparation, as examiners often ask ``walk me through what happens when you run an experiment.''
+
+% ----------------------------------------------------------
+\subsection{High-Level Architecture Overview}
+
+The codebase is organised into 9 sections:
+
+\begin{center}
+\begin{tabular}{@{}clp{9cm}@{}}
+\toprule
+\textbf{Sec.} & \textbf{Name} & \textbf{Purpose} \\
+\midrule
+1 & Utility Functions & String cleaning, JSON extraction, test name parsing \\
+2 & Model Inference Layer & Unified dispatcher for OpenAI / Claude / Replicate / HuggingFace \\
+3 & LocalServerLLMWrapper & NF4 quantisation, Flash Attention 2, Dynamic LoRA loading \\
+4 & ClinicalTrajectoryEvaluator & DS, TR, IE metric computation \\
+5 & Dataset Classes & \texttt{ScenarioMedQA} + \texttt{ScenarioLoaderMedQA} \\
+6 & Agent Classes & \texttt{PatientAgent}, \texttt{DoctorAgent}, \texttt{MeasurementAgent} \\
+7 & LangGraph State Machine & \texttt{ClinicalState} TypedDict definition \\
+8 & Main Execution Pipeline & Model loading, graph building, scenario loop \\
+9 & CLI Entry Point & \texttt{argparse} configuration \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ----------------------------------------------------------
+\subsection{Step-by-Step Execution Flow}
+
+\subsubsection{Step 1: CLI Invocation and Argument Parsing (Section 9)}
+
+\begin{verbatim}
+python agentic_clinic_future_scope.py \
+  --doctor_llm HF_mistralai/Mistral-7B-Instruct-v0.2 \
+  --patient_llm HF_mistralai/Mistral-7B-Instruct-v0.2 \
+  --doctor_model_id mistralai/Mistral-7B-Instruct-v0.2 \
+  --patient_model_id mistralai/Mistral-7B-Instruct-v0.2 \
+  --num_scenarios 107 \
+  --doctor_bias None
+\end{verbatim}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+\texttt{argparse} parses command-line flags:
+\begin{itemize}
+    \item \texttt{--doctor\_llm}: Backend identifier (prefix \texttt{HF\_} $\rightarrow$ local HuggingFace model)
+    \item \texttt{--doctor\_model\_id}: Actual HuggingFace model ID for weight loading
+    \item \texttt{--patient\_model\_id}: Separate model for heterogeneous architecture
+    \item \texttt{--doctor\_bias}: \texttt{None} / \texttt{recency} / \texttt{confirmation}
+    \item \texttt{--num\_scenarios}: How many of the 107 cases to run
+\end{itemize}
+These arguments flow into the \texttt{main()} function.
+\end{acadbox}
+
+% ---
+\subsubsection{Step 2: Heterogeneous Engine Loading (Section 3 via Section 8)}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+\texttt{main()} instantiates \texttt{LocalServerLLMWrapper} for each agent role:
+
+\textbf{2a. Doctor Engine:}
+\begin{enumerate}
+    \item Load tokenizer from HuggingFace: \texttt{AutoTokenizer.from\_pretrained(model\_id)}
+    \item Configure NF4 quantisation: \texttt{BitsAndBytesConfig(load\_in\_4bit=True, bnb\_4bit\_quant\_type="nf4", bnb\_4bit\_use\_double\_quant=True)}
+    \item Load model: \texttt{AutoModelForCausalLM.from\_pretrained(model\_id, quantization\_config=bnb\_config)}
+    \item Attempt Flash Attention 2: \texttt{attn\_implementation="flash\_attention\_2"} (silent fallback if unavailable)
+    \item Check for LoRA adapters at \texttt{adapters/reasoning\_lora} and \texttt{adapters/dialogue\_lora}
+    \item If found: wrap model with \texttt{PeftModel.from\_pretrained()} and load both adapters
+    \item Create text-generation pipeline: \texttt{pipeline("text-generation", model=model, tokenizer=tokenizer)}
+\end{enumerate}
+
+\textbf{2b. Patient Engine:}
+\begin{itemize}
+    \item If \texttt{patient\_model\_id == doctor\_model\_id}: share the Doctor engine (homogeneous mode --- Lexical Leakage risk!)
+    \item If different: load a separate \texttt{LocalServerLLMWrapper} instance (heterogeneous mode --- Leakage eliminated)
+\end{itemize}
+
+\textbf{2c. Moderator Engine:}
+\begin{itemize}
+    \item Shares the Patient engine by default, or loads a separate one if specified
+\end{itemize}
+\end{acadbox}
+
+\begin{mattersbox}[\textcolor{white}{Why It Matters}]
+This is where the heterogeneous multi-engine architecture is enforced. If doctor and patient share the same engine, $\theta_{\text{Doctor}} = \theta_{\text{Patient}}$ and Lexical Leakage is possible. If they are different engines, the embedding manifolds are severed.
+\end{mattersbox}
+
+% ---
+\subsubsection{Step 3: Dataset Loading (Section 5)}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+\texttt{ScenarioLoaderMedQA} reads \texttt{agentclinic\_medqa.jsonl} line-by-line:
+\begin{enumerate}
+    \item Each line is parsed as a JSON object
+    \item Wrapped in a \texttt{ScenarioMedQA} object that partitions data:
+    \begin{itemize}
+        \item \texttt{.examiner\_information()} $\rightarrow$ Doctor sees the objective
+        \item \texttt{.patient\_information()} $\rightarrow$ Patient holds the symptoms
+        \item \texttt{.exam\_information()} $\rightarrow$ Measurement holds test results
+        \item \texttt{.diagnosis\_information()} $\rightarrow$ Moderator holds ground truth
+    \end{itemize}
+\end{enumerate}
+This is the \textbf{knowledge partitioning} that makes the simulation realistic.
+\end{acadbox}
+
+% ---
+\subsubsection{Step 4: Scenario Loop (Section 8, repeated 107 times)}
+
+For each scenario, the following happens:
+
+\textbf{4a. Agent Instantiation (Section 6):}
+\begin{itemize}
+    \item \texttt{DoctorAgent(scenario, bias=doctor\_bias, recent\_cases=[...])} --- receives only the \texttt{Objective\_for\_Doctor}
+    \item \texttt{PatientAgent(scenario, bias=patient\_bias)} --- receives only the \texttt{Patient\_Actor} symptoms
+    \item \texttt{MeasurementAgent(scenario)} --- receives only the \texttt{Test\_Results} and \texttt{Physical\_Examination\_Findings}
+\end{itemize}
+
+\textbf{4b. Bias Injection:}
+\begin{itemize}
+    \item If \texttt{doctor\_bias == "recency"}: the last $k=5$ case summaries are injected into the Doctor's system prompt
+    \item If \texttt{doctor\_bias == "confirmation"}: a strong prior hypothesis (``You are initially confident the patient has cancer'') is injected
+\end{itemize}
+
+% ---
+\subsubsection{Step 5: LangGraph Construction (Section 7 + Section 8)}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+The directed cyclic graph is built:
+\begin{enumerate}
+    \item Create \texttt{StateGraph(ClinicalState)} --- defines the shared state schema
+    \item Add 4 nodes:
+    \begin{itemize}
+        \item \texttt{doctor\_reflection} --- hidden metacognitive reasoning
+        \item \texttt{doctor\_speaker} --- patient-facing dialogue
+        \item \texttt{patient} --- patient response
+        \item \texttt{measurement} --- test result delivery
+    \end{itemize}
+    \item Set entry point: \texttt{doctor\_reflection}
+    \item Add deterministic edges:
+    \begin{itemize}
+        \item \texttt{doctor\_reflection} $\rightarrow$ \texttt{doctor\_speaker} (always)
+        \item \texttt{patient} $\rightarrow$ \texttt{doctor\_reflection} (always)
+        \item \texttt{measurement} $\rightarrow$ \texttt{doctor\_reflection} (always)
+    \end{itemize}
+    \item Add conditional edge from \texttt{doctor\_speaker} via \texttt{route\_doctor()}:
+    \begin{itemize}
+        \item ``DIAGNOSIS READY'' in output OR turn $\geq$ max $\rightarrow$ \texttt{END}
+        \item ``REQUEST TEST'' in output $\rightarrow$ \texttt{measurement}
+        \item Otherwise $\rightarrow$ \texttt{patient}
+    \end{itemize}
+    \item Compile: \texttt{app = workflow.compile()}
+\end{enumerate}
+\end{acadbox}
+
+% ---
+\subsubsection{Step 6: Graph Execution (One Full Consultation)}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+\texttt{app.invoke(initial\_state)} starts the state machine. Here is one complete cycle:
+
+\textbf{Initial State:}
+\begin{verbatim}
+{
+  "last_input_to_doctor": "Please begin the examination.",
+  "turn_count": 0,
+  "diagnosis_ready": False,
+  "differential_trajectory": [],
+  "tests_ordered": [],
+  "full_dialogue": []
+}
+\end{verbatim}
+
+\textbf{Cycle: Turn 1}
+\begin{enumerate}
+    \item \textbf{doctor\_reflection node:}
+    \begin{itemize}
+        \item If LoRA available: \texttt{model.set\_adapter("reasoning")}
+        \item System prompt: ``List top 3 differential diagnoses as JSON array''
+        \item Temperature: $T = 0.1$
+        \item Output: \texttt{["Pneumonia", "Asthma", "Bronchitis"]}
+        \item State update: \texttt{differential\_diagnoses} and \texttt{differential\_trajectory} updated
+        \item This output is \textbf{NOT} shown to the patient
+    \end{itemize}
+    
+    \item \textbf{doctor\_speaker node:}
+    \begin{itemize}
+        \item If LoRA available: \texttt{model.set\_adapter("dialogue")}
+        \item System prompt includes: turn count, bias injection (if any), presentation info
+        \item Temperature: $T = 0.7$
+        \item Output: ``Good morning. I'd like to ask about your cough. When did it start?''
+        \item State update: \texttt{last\_doctor\_message}, \texttt{turn\_count} incremented, \texttt{full\_dialogue} appended
+    \end{itemize}
+    
+    \item \textbf{route\_doctor() evaluates:}
+    \begin{itemize}
+        \item No ``DIAGNOSIS READY'' $\rightarrow$ not END
+        \item No ``REQUEST TEST'' $\rightarrow$ not measurement
+        \item $\rightarrow$ route to \texttt{patient}
+    \end{itemize}
+    
+    \item \textbf{patient node:}
+    \begin{itemize}
+        \item Receives doctor's message, generates response using Patient engine
+        \item Output: ``It started about three weeks ago. I've been coughing up yellowish phlegm.''
+        \item State update: \texttt{last\_input\_to\_doctor} updated
+        \item $\rightarrow$ route back to \texttt{doctor\_reflection} (cycle continues)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Cycle: Turn $N$ (with test request)}
+\begin{enumerate}
+    \item doctor\_reflection outputs: \texttt{["Pneumonia", "TB", "Lung Abscess"]}
+    \item doctor\_speaker outputs: ``REQUEST TEST: Chest X-Ray''
+    \item route\_doctor() detects ``REQUEST TEST'' $\rightarrow$ routes to \texttt{measurement}
+    \item measurement node returns: ``RESULTS: Bilateral infiltrates consistent with pneumonia''
+    \item Test name (``Chest X-Ray'') appended to \texttt{tests\_ordered}
+    \item $\rightarrow$ route back to \texttt{doctor\_reflection}
+\end{enumerate}
+
+\textbf{Terminal: Final Turn}
+\begin{enumerate}
+    \item doctor\_reflection outputs: \texttt{["Community-Acquired Pneumonia"]}
+    \item doctor\_speaker outputs (forced by system prompt): ``DIAGNOSIS READY: Community-Acquired Pneumonia''
+    \item route\_doctor() detects ``DIAGNOSIS READY'' $\rightarrow$ routes to \texttt{END}
+    \item Graph execution terminates, \texttt{final\_state} is returned
+\end{enumerate}
+\end{acadbox}
+
+% ---
+\subsubsection{Step 7: Evaluation (Moderator + Metrics)}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+\textbf{7a. Semantic Diagnosis Comparison:}
+\begin{itemize}
+    \item Extract predicted diagnosis from \texttt{final\_state["last\_doctor\_message"]}
+    \item Call \texttt{compare\_results(predicted, ground\_truth, moderator\_engine)}
+    \item Moderator LLM compares semantically: ``Community-Acquired Pneumonia'' vs ``Pneumonia'' $\rightarrow$ ``Yes'' (correct)
+\end{itemize}
+
+\textbf{7b. Process Metrics via ClinicalTrajectoryEvaluator (Section 4):}
+\begin{itemize}
+    \item \textbf{Diagnostic Stability:} Average Jaccard similarity across \texttt{differential\_trajectory}
+    \item \textbf{Test Rationality:} Check if any advanced test was ordered before a basic test in \texttt{tests\_ordered}
+    \item \textbf{Information Efficiency:} $\frac{\text{tests\_ordered count} + \text{turn\_count}}{\text{turn\_count}}$
+\end{itemize}
+\end{acadbox}
+
+% ---
+\subsubsection{Step 8: Results Persistence}
+
+\begin{acadbox}[\textcolor{white}{What Happens}]
+A comprehensive JSON record is appended to the JSONL output file:
+\begin{verbatim}
+{
+  "scenario_id": 42,
+  "doctor_model": "Mistral-7B-Instruct-v0.2",
+  "ground_truth": "Pneumonia", 
+  "predicted_diagnosis": "Community-Acquired Pneumonia",
+  "correct": true,
+  "turn_count": 7,
+  "differential_trajectory": [
+    ["Pneumonia","Asthma","Bronchitis"],
+    ["Pneumonia","TB","Bronchitis"],
+    ...
+  ],
+  "tests_ordered": ["CBC", "Chest X-Ray"],
+  "metrics": {
+    "Diagnostic_Stability": 0.72,
+    "Test_Rationality": 1.0,
+    "Information_Efficiency": 1.28
+  },
+  "full_dialogue": [...]
+}
+\end{verbatim}
+
+If recency bias is enabled, the case summary is added to the \texttt{recent\_case\_summaries} FIFO queue (max $k=5$) for injection into the next scenario's Doctor prompt.
+\end{acadbox}
+
+% ---
+\subsubsection{Step 9: Final Summary}
+
+After all 107 scenarios complete, the system prints aggregate accuracy and saves results. If \texttt{--notify} is specified, a push notification is sent via \texttt{ntfy.sh}.
+
+% ----------------------------------------------------------
+\subsection{Complete Data Flow Diagram}
+
+\begin{verbatim}
+CLI args
+  |
+  v
+main() ----> Load Doctor Engine (NF4 + LoRA)
+  |          Load Patient Engine (NF4, separate model)
+  |          Load Moderator Engine (NF4)
+  |          Load 107 scenarios from JSONL
+  |
+  v
+FOR EACH SCENARIO:
+  |
+  +---> Create DoctorAgent (gets Objective only)
+  |     Create PatientAgent (gets Symptoms only)
+  |     Create MeasurementAgent (gets Tests only)
+  |     Inject bias prompts if configured
+  |
+  +---> Build LangGraph DCG
+  |       Nodes: reflection, speaker, patient, measurement
+  |       Edges: deterministic + conditional (route_doctor)
+  |       Compile graph
+  |
+  +---> app.invoke(initial_state)
+  |       |
+  |       +---> doctor_reflection (reasoning LoRA, T=0.1)
+  |       |       Output: JSON DDx -> stored in trajectory
+  |       |
+  |       +---> doctor_speaker (dialogue LoRA, T=0.7)
+  |       |       Output: spoken dialogue or REQUEST TEST or DIAGNOSIS READY
+  |       |
+  |       +---> route_doctor()
+  |       |       DIAGNOSIS READY? -> END
+  |       |       REQUEST TEST?    -> measurement_node -> back to reflection
+  |       |       Otherwise?       -> patient_node -> back to reflection
+  |       |
+  |       +---> (repeat up to 10 turns)
+  |       |
+  |       +---> final_state returned
+  |
+  +---> compare_results() via Moderator LLM (semantic match)
+  +---> ClinicalTrajectoryEvaluator.generate_full_report()
+  +---> Append result to JSONL
+  +---> Update recency bias queue
+  |
+  v
+PRINT FINAL ACCURACY + SAVE
+\end{verbatim}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Code Workflow}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} Walk me through what happens when you run an experiment.\\
+    \textbf{A:} [Use the 9-step flow above: CLI $\rightarrow$ engine loading $\rightarrow$ dataset loading $\rightarrow$ scenario loop $\rightarrow$ graph construction $\rightarrow$ graph execution $\rightarrow$ evaluation $\rightarrow$ persistence $\rightarrow$ summary]
+
+    \item \textbf{Q:} What determines whether the doctor talks to the patient or orders a test?\\
+    \textbf{A:} The \texttt{route\_doctor()} function inspects the doctor's output string. If it contains ``REQUEST TEST'', routing goes to the measurement node. If ``DIAGNOSIS READY'' or turn limit reached, routing goes to END. Otherwise, routing goes to the patient node.
+
+    \item \textbf{Q:} What happens if the doctor fails to produce a diagnosis by the final turn?\\
+    \textbf{A:} The system prompt is overridden with a forced diagnosis instruction. If the model still fails, a secondary \texttt{\_force\_final\_diagnosis()} function is called with few-shot examples of the expected format. As a last resort, ``Unable to determine'' is emitted.
+
+    \item \textbf{Q:} How does the code enforce knowledge partitioning?\\
+    \textbf{A:} Each agent class receives only its designated data slice during instantiation. \texttt{DoctorAgent} gets \texttt{examiner\_information()}, \texttt{PatientAgent} gets \texttt{patient\_information()}, \texttt{MeasurementAgent} gets \texttt{exam\_information()}. The ground-truth diagnosis is only accessible to the \texttt{compare\_results()} function via the Moderator.
+
+    \item \textbf{Q:} Where in the code does Lexical Leakage prevention happen?\\
+    \textbf{A:} In \texttt{main()}, lines 1001--1010. If \texttt{patient\_model\_id != doctor\_model\_id}, a separate \texttt{LocalServerLLMWrapper} is instantiated. This creates two independent embedding manifolds ($\theta_{\text{Doctor}} \neq \theta_{\text{Patient}}$).
+
+    \item \textbf{Q:} How are the LoRA adapters swapped during execution?\\
+    \textbf{A:} In \texttt{reflect\_metacognition()} (line 717): \texttt{model.set\_adapter("reasoning")} before DDx generation. In \texttt{inference\_doctor()} (line 753): \texttt{model.set\_adapter("dialogue")} before dialogue generation. The swap is a pointer operation that changes which $BA$ matrices are added to frozen $W_0$.
+
+    \item \textbf{Q:} What is ClinicalState and why is it a TypedDict?\\
+    \textbf{A:} \texttt{ClinicalState} is the shared state schema passed between all LangGraph nodes. It's a \texttt{TypedDict} (not a regular dict) because LangGraph requires statically-typed state definitions for compile-time graph validation and type-safe node returns.
+\end{enumerate}
+\end{vivabox}

@@ -1,0 +1,186 @@
+% ============================================================
+%  CHAPTER 6 — EXPERIMENTS AND RESULTS
+% ============================================================
+\section{Chapter 6: Experiments and Results}
+\label{ch:results}
+
+% ----------------------------------------------------------
+\subsection{Experimental Design}
+
+Six experiments were conducted over \textbf{107 AgentClinic-MedQA scenarios}, capped at \textbf{10 multi-turn inference steps} per scenario, on a single NVIDIA H100 NVL GPU (95.8\,GB VRAM).
+
+\begin{center}
+\begin{tabular}{@{}lllc@{}}
+\toprule
+\textbf{Exp.} & \textbf{Doctor Engine} & \textbf{Bias} & \textbf{NF4} \\
+\midrule
+E1 & Mistral-7B-Instruct-v0.2 & None & Off \\
+E2 & JSL-MedMistral-7B-v2.2 & None & Yes \\
+E3 & Llama-3.1-8B-Instruct & None & Yes \\
+E4 & JSL-MedMistral-7B-v2.2 & Recency & Yes \\
+E5 & JSL-MedMistral-7B-v2.2 & Confirmation & Yes \\
+E6 & JSL-MedMistral-7B + LoRA & None & Yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ----------------------------------------------------------
+\subsection{Full Results Table}
+
+\begin{center}
+\begin{tabular}{@{}llccccc@{}}
+\toprule
+\textbf{Exp} & \textbf{Doctor} & \textbf{Bias} & \textbf{Acc\%} & \textbf{DS} & \textbf{TR} & \textbf{IE} \\
+\midrule
+E1 & Mistral-7B & None & 45.6 & 0.56 & 0.63 & 1.13 \\
+E2 & JSL-MedMistral & None & 50.2 & 0.68 & 0.71 & 0.98 \\
+E3 & Llama-3.1-8B & None & 53.5 & 0.65 & 0.79 & 1.05 \\
+E4 & JSL-MedMistral & Recency & 38.1 & 0.45 & 0.58 & 1.34 \\
+E5 & JSL-MedMistral & Confirmation & 31.4 & 0.88 & 0.41 & 0.61 \\
+E6 & JSL-Med + LoRA & None & \textbf{54.7} & 0.72 & 0.76 & 1.02 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ----------------------------------------------------------
+\subsection{Metric Definitions with Worked Examples}
+
+% --- DS ---
+\subsubsection{Diagnostic Stability (DS)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+DS measures the average Jaccard similarity between consecutive differential diagnoses over $T$ turns. It captures how consistently a model refines its hypotheses (vs.\ erratic switching).
+\[
+DS = 1 - \frac{1}{T-1} \sum_{t=1}^{T-1} \left(1 - \frac{|DDx_t \cap DDx_{t+1}|}{|DDx_t \cup DDx_{t+1}|}\right) = \frac{1}{T-1} \sum_{t=1}^{T-1} J(DDx_t, DDx_{t+1})
+\]
+where $J(A, B) = \frac{|A \cap B|}{|A \cup B|}$ is the Jaccard similarity coefficient.
+\end{acadbox}
+
+\begin{examplebox}[\textcolor{white}{Worked Example: Jaccard Similarity for DS}]
+Suppose a 4-turn scenario produces these differentials:
+\begin{itemize}
+    \item Turn 1: \{Asthma, COPD, Pneumonia\}
+    \item Turn 2: \{Asthma, COPD, Bronchitis\}
+    \item Turn 3: \{COPD, Bronchitis, Lung Cancer\}
+    \item Turn 4: \{COPD, Bronchitis, Lung Cancer\}
+\end{itemize}
+
+\textbf{Step 1:} $J(T1, T2) = \frac{|\{\text{Asthma, COPD}\}|}{|\{\text{Asthma, COPD, Pneumonia, Bronchitis}\}|} = \frac{2}{4} = 0.50$
+
+\textbf{Step 2:} $J(T2, T3) = \frac{|\{\text{COPD, Bronchitis}\}|}{|\{\text{Asthma, COPD, Bronchitis, Lung Cancer}\}|} = \frac{2}{4} = 0.50$
+
+\textbf{Step 3:} $J(T3, T4) = \frac{|\{\text{COPD, Bronchitis, Lung Cancer}\}|}{|\{\text{COPD, Bronchitis, Lung Cancer}\}|} = \frac{3}{3} = 1.00$
+
+\textbf{DS} $= \frac{0.50 + 0.50 + 1.00}{3} = 0.667$
+
+\textbf{Interpretation:} Moderate stability. The model refined hypotheses gradually (good), with the final two turns showing complete convergence.
+\end{examplebox}
+
+\textbf{What does DS = 0.56 vs.\ DS = 0.88 mean?}
+\begin{itemize}
+    \item $DS = 0.56$ (E1): Frequent hypothesis revisions. The model changes its differential frequently---potentially reactive and exploratory, but also possibly noisy.
+    \item $DS = 0.88$ (E5): Almost no changes across turns. The model stubbornly maintains its initial hypothesis---which sounds good, but is \textbf{dangerous when combined with low accuracy (31.4\%)}. This is premature diagnostic closure.
+\end{itemize}
+
+% --- TR ---
+\subsubsection{Test Rationality (TR)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+TR is a binary compliance indicator: did the model order at least one basic exploratory test (CBC, vitals, basic metabolic panel) \textit{before} requesting expensive or invasive procedures (MRI, biopsy, CT angiography)?
+\[
+TR = \begin{cases}
+0 & \text{if } \exists\, t_{\text{adv}} \text{ ordered before any } t_{\text{basic}} \\
+1 & \text{otherwise}
+\end{cases}
+\]
+\end{acadbox}
+
+\begin{examplebox}[\textcolor{white}{Worked Example: Test Ordering for TR}]
+\textbf{Rational ordering (TR = 1):}
+\begin{enumerate}
+    \item Vital signs check (\textit{basic})
+    \item Complete Blood Count (\textit{basic})
+    \item Chest X-ray (\textit{intermediate})
+    \item CT scan (\textit{advanced})
+\end{enumerate}
+
+\textbf{Irrational ordering (TR = 0):}
+\begin{enumerate}
+    \item MRI Brain (\textit{advanced}) --- ordered before \textit{any} basic test!
+    \item Vital signs check (\textit{basic})
+\end{enumerate}
+The second sequence fails TR because the model jumped to an expensive, invasive test without first gathering basic information.
+\end{examplebox}
+
+% --- IE ---
+\subsubsection{Information Efficiency (IE)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+IE measures the ratio of unique differential hypotheses generated ($N_{\text{unique}}$) to the total number of dialogue turns ($T$):
+\[
+IE = \frac{N_{\text{unique}}}{T}
+\]
+$IE \approx 1.0$: Each turn produces a new hypothesis (efficient exploration).\\
+$IE \gg 1.0$: Over-testing---gathering more data points than hypotheses warrant.\\
+$IE \ll 1.0$: Under-exploration---failing to generate new hypotheses from available evidence.
+\end{acadbox}
+
+\textbf{Why is E4's IE = 1.34 paradoxically high?}\\
+Under recency bias, the model panics and orders many tests per turn, gathering excess data without meaningfully refining its differential. It over-tests due to ``bias panic''---each injected case memory triggers a new round of defensive testing.
+
+% ----------------------------------------------------------
+\subsection{Five Key Findings Explained}
+
+\subsubsection{Finding 1: E1 Accuracy (45.6\%) Increased from Phase 1 (44\%)}
+
+\begin{acadbox}[\textcolor{white}{Academic Definition}]
+Despite \textit{removing} Lexical Leakage by switching to heterogeneous engines, accuracy \textit{increased} by 1.6 percentage points. This proves that the LangGraph DCG + metacognitive reflection node provides a reasoning scaffold \textbf{more powerful} than the implicit performance boost from shared embedding manifolds. Structured metacognition eclipses Lexical Leakage.
+\end{acadbox}
+
+\subsubsection{Finding 2: Why E3 $>$ E2 (Instruction Alignment vs.\ Domain Fine-Tuning)}
+
+Llama-3.1-8B (E3: 53.5\%) outperformed JSL-MedMistral (E2: 50.2\%) despite having \textit{less} medical domain knowledge. Llama-3.1's superior \textbf{instruction alignment} gave it better command following ($TR = 0.79$ vs.\ 0.71), better multi-turn coherence, and better conditional routing compliance. In interactive clinical simulation, \textit{how well you follow instructions} matters as much as \textit{what you know about medicine}.
+
+\subsubsection{Finding 3: E4 Recency Bias --- ``Hypothesis Thrashing''}
+
+The $k = 5$ injected case memories destabilise the Doctor's reasoning. $DS = 0.45$ (lowest stability) means the model constantly rewrites its differential to match recent cases rather than the current patient's evidence. Accuracy drops to 38.1\%---the model conflates independent patients.
+
+\subsubsection{Finding 4: E5 Confirmation Bias --- ``Premature Diagnostic Closure''}
+
+The strong prior hypothesis makes the model appear \textit{very stable} ($DS = 0.88$, highest in the study) while being \textit{catastrophically wrong} (31.4\%, lowest accuracy). The model stubbornly refuses to update its differential, ignoring contradictory evidence from the Measurement Agent. This is the \textbf{most dangerous failure mode}: confident consistency with systematic incorrectness.
+
+\subsubsection{Finding 5: E6 Dynamic LoRA --- Highest Accuracy}
+
+The dual-adapter approach resolved the specialisation--alignment trade-off:
+\begin{itemize}
+    \item Accuracy: $50.2\% \rightarrow 54.7\%$ (+4.5 pp over E2 base)
+    \item DS: $0.68 \rightarrow 0.72$ (more stable reasoning)
+    \item TR: $0.71 \rightarrow 0.76$ (better test ordering)
+    \item IE: $0.98 \rightarrow 1.02$ (maintained efficiency)
+    \item VRAM overhead: only $\sim$50 MB
+\end{itemize}
+
+% ----------------------------------------------------------
+\subsection{Potential Viva Questions --- Chapter 6}
+
+\begin{vivabox}[\textcolor{white}{Likely Viva Questions}]
+\begin{enumerate}
+    \item \textbf{Q:} How is Diagnostic Stability computed? Walk me through an example.\\
+    \textbf{A:} DS is the average Jaccard similarity between consecutive DDx sets. [Provide worked example above.]
+
+    \item \textbf{Q:} Why is high DS with low accuracy dangerous?\\
+    \textbf{A:} It means the model is \textit{confidently wrong}---it never changes its mind despite contradictory evidence. This is premature diagnostic closure, the most dangerous clinical failure mode.
+
+    \item \textbf{Q:} Why did removing Lexical Leakage \textit{increase} accuracy?\\
+    \textbf{A:} The structural scaffold (DCG + reflection node) was more valuable than the Leakage boost. Forcing ``think before you speak'' improved reasoning quality beyond what shared embeddings provided.
+
+    \item \textbf{Q:} What does IE = 1.34 mean in E4?\\
+    \textbf{A:} The model generated more unique data points per turn than hypotheses warranted---over-testing due to recency bias ``panic.'' The injected case memories made the model defensively order extra tests.
+
+    \item \textbf{Q:} How did LoRA improve accuracy by 4.5 points?\\
+    \textbf{A:} The reasoning adapter anchored the reflection node's DDx to medical evidence; the dialogue adapter preserved conversational coherence. Decoupling these tasks at the adapter level prevented the attention head ``tug-of-war'' that degrades both reasoning and dialogue quality.
+
+    \item \textbf{Q:} Why does E6 surpass even E3 (Llama-3.1)?\\
+    \textbf{A:} E3 has better instruction alignment but less medical knowledge. E6 combines JSL-MedMistral's domain expertise with LoRA-separated reasoning and dialogue, achieving the best of both worlds.
+\end{enumerate}
+\end{vivabox}

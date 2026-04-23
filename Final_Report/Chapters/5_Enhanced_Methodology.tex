@@ -1,18 +1,18 @@
-\chapter{Enhanced Methodology and System Architecture: AgentClinic v2.1}
+\chapter{Enhanced Methodology and System Architecture: AgentClinic v2}
 \label{Chapter5}
-\lhead{Chapter 5. \emph{Enhanced Methodology \& System Architecture (v2.1)}}
+\lhead{Chapter 5. \emph{Enhanced Methodology \& System Architecture (v2)}}
 
-To resolve the critical flaws of the initial framework and elevate the research to a rigorous standard, \textbf{AgentClinic v2.1} was developed as a complete architectural redesign.
+To resolve the critical flaws of the initial framework and elevate the research to a rigorous standard, \textbf{AgentClinic v2} was developed as a complete architectural redesign.
 
 \section{LangGraph Directed Cyclic Graph (DCG) Orchestration}
 
-The foundational limitation of the prior ad-hoc loop was the inability to enforce strict, deterministic state transitions. AgentClinic v2.1 completely redesigns the orchestrator as a \textbf{LangGraph Directed Cyclic Graph (DCG)}. The consultation protocol is enforced as a finite-state controller wherein nodes represent agents and edges represent deterministic routing logic conditioned on the current shared state.
+The foundational limitation of the prior ad-hoc loop was the inability to enforce strict, deterministic state transitions. AgentClinic v2 completely redesigns the orchestrator as a \textbf{LangGraph Directed Cyclic Graph (DCG)}. The consultation protocol is enforced as a finite-state controller wherein nodes represent agents and edges represent deterministic routing logic conditioned on the current shared state.
 
 \subsection{The Latent Metacognitive Reflection Node}
 
 The most significant architectural innovation is the introduction of the \texttt{doctor\_reflection} node. Human clinicians maintain a mental differential diagnosis that evolves silently as they interview a patient. Standard LLMs lack a persistent latent scratchpad; forcing them to generate bedside dialogue and complex medical reasoning simultaneously leads to hallucinations and reasoning-contaminated speech.
 
-In v2.1, before any spoken utterance, the DCG routes execution to the \texttt{doctor\_reflection} node. The LLM is forced to output a strictly structured JSON array of its current top-3 differential diagnoses (e.g., \texttt{["Asthma", "COPD", "Pneumonia"]}). This node operates at a low sampling temperature ($T=0.1$) for deterministic extraction. Critically, these hypotheses are stored in the \texttt{ClinicalState} trajectory log but are \textit{not} injected into the patient-facing dialogue history, making the LLM's latent reasoning observable and quantifiable across time steps without contaminating the interaction.
+In v2, before any spoken utterance, the DCG routes execution to the \texttt{doctor\_reflection} node. The LLM is forced to output a strictly structured JSON array of its current top-3 differential diagnoses (e.g., \texttt{["Asthma", "COPD", "Pneumonia"]}). This node operates at a low sampling temperature ($T=0.1$) for deterministic extraction. Critically, these hypotheses are stored in the \texttt{ClinicalState} trajectory log but are \textit{not} injected into the patient-facing dialogue history, making the LLM's latent reasoning observable and quantifiable across time steps without contaminating the interaction.
 
 \begin{figure}[H]
 \centering
@@ -41,15 +41,15 @@ In v2.1, before any spoken utterance, the DCG routes execution to the \texttt{do
 \draw[arrow] (patient) -- node[left, font=\small]{Response} (reflection);
 \draw[arrow] (measurement) -- node[left, font=\small]{Results} (reflection);
 \end{tikzpicture}
-\caption{LangGraph DCG topology of AgentClinic v2.1. The \texttt{doctor\_reflection} node (shaded) ensures reasoning trajectories are recorded systematically before each spoken turn, providing a structured metacognitive scaffold without contaminating patient-facing dialogue.}
+\caption{LangGraph DCG topology of AgentClinic v2. The \texttt{doctor\_reflection} node (shaded) ensures reasoning trajectories are recorded systematically before each spoken turn, providing a structured metacognitive scaffold without contaminating patient-facing dialogue.}
 \label{fig:langgraph}
 \end{figure}
 
 \section{Heterogeneous Multi-Engine Architecture and Quantisation}
 
-To definitively eradicate \textit{Lexical Leakage}, v2.1 implements a \textit{Cognitive Asymmetry} design principle: the Doctor operates as a domain-expert engine, while the Patient, Measurement, and Moderator agents are simulated by separate, architecturally distinct model instances.
+To definitively eradicate \textit{Lexical Leakage}, v2 implements a \textit{Cognitive Asymmetry} design principle: the Doctor operates as a domain-expert engine, while the Patient, Measurement, and Moderator agents are simulated by separate, architecturally distinct model instances.
 
-Executing three or more distinct 7B-parameter models simultaneously on a single NVIDIA H100 NVL (95.8\,GB VRAM) is memory-prohibitive in standard FP16 (~14\,GB per model, excluding activations). AgentClinic v2.1 utilises \textbf{NormalFloat4 (NF4) quantisation} via the BitsAndBytes library. Because neural network weights approximate a zero-mean normal distribution, NF4 maps these weights into an information-theoretically optimal 4-bit data type. Furthermore, \textit{double quantisation} applies a secondary round of quantisation to the quantisation constants themselves, recovering a further $\approx$0.37 bits per parameter.
+Executing three or more distinct 7B-parameter models simultaneously on a single NVIDIA H100 NVL (95.8\,GB VRAM) is memory-prohibitive in standard FP16 (~14\,GB per model, excluding activations). AgentClinic v2 utilises \textbf{NormalFloat4 (NF4) quantisation} via the BitsAndBytes library. Because neural network weights approximate a zero-mean normal distribution, NF4 maps these weights into an information-theoretically optimal 4-bit data type. Furthermore, \textit{double quantisation} applies a secondary round of quantisation to the quantisation constants themselves, recovering a further $\approx$0.37 bits per parameter.
 
 \begin{equation}
 \text{VRAM}_{\text{model}} \approx \text{Params} \times \left( \frac{4\ \text{bits}}{8\ \text{bits/byte}} \right) + \text{KV-Cache Overhead}
@@ -81,12 +81,32 @@ IE = \frac{N_{\text{unique}}}{T}
 
 \section{Structured Cognitive Bias Injection Manifold}
 
-The v2.1 manifold ports and substantially enhances the bias injections from the initial framework. Instead of generic sentence-level prompts, ecologically valid distortions are injected:
+The v2 manifold ports and substantially enhances the bias injections from the initial framework. Instead of generic sentence-level prompts, ecologically valid distortions are injected:
 
 \begin{itemize}
     \item \textbf{Recency Bias:} The system maintains a running queue of the $k=5$ most recently processed case summaries. These are injected into the Doctor's system prompt, mimicking a physician overly influenced by recent clinical encounters. This exploits the transformer's natural tendency to assign elevated attention weights to tokens appearing near the current generation boundary.
     \item \textbf{Confirmation Bias:} The Doctor is primed with a strong, incorrect initial hypothesis (e.g., \textit{``You are initially confident the patient has malignancy.''}). This warps the model's forward probability distribution toward confirmatory evidence acquisition, operationalising the premature diagnostic closure observed in anchoring studies.
 \end{itemize}
+
+\section{Task-Specific Dynamic LoRA Adapter Routing}
+
+To address the catastrophic forgetting observed in narrowly fine-tuned models, a parameter-efficient inference-time solution was implemented: \textbf{dynamic routing of task-specific Low-Rank Adaptation (LoRA) adapters}, conditioned on the active LangGraph node.
+
+LoRA~\cite{hu2022lora} decomposes a weight update $\Delta W \in \mathbb{R}^{d \times k}$ into a low-rank product $\Delta W = BA$, where $B \in \mathbb{R}^{d \times r}$ and $A \in \mathbb{R}^{r \times k}$ with rank $r \ll \min(d, k)$. The effective update applied to the frozen pre-trained matrix $W_0$ is scaled by $\frac{\alpha}{r}$:
+\begin{equation}
+W = W_0 + \frac{\alpha}{r} \cdot BA
+\end{equation}
+where $\alpha = 32$ and $r = 16$, yielding a scaling factor of $2\times$. This reduces the number of trainable parameters by orders of magnitude while preserving representational capacity in the task-relevant subspace. LoRA adapters were applied to all four attention projection matrices (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}) across all 32 transformer layers, totalling approximately 16.8M trainable parameters ($\sim$25\,MB) per adapter.
+
+Two lightweight adapters were trained independently using QLoRA (4-bit NF4 quantised base with BF16 adapter training) via the HuggingFace PEFT library:
+\begin{itemize}
+    \item A \textit{reasoning adapter} ($r=16$, $\alpha=32$), fine-tuned on medical differential diagnosis corpora and activated exclusively during the \texttt{doctor\_reflection} node via \texttt{model.set\_adapter("reasoning")}. This adapter steers the model's latent probability distribution toward structured diagnostic enumeration at a low temperature ($T = 0.1$).
+    \item A \textit{dialogue adapter} ($r=16$, $\alpha=32$), fine-tuned on empathetic clinical communication transcripts and activated during the \texttt{doctor\_speaker} node via \texttt{model.set\_adapter("dialogue")}. This adapter preserves the conversational fluency and empathetic tone required for realistic patient interaction at standard temperature ($T = 0.7$).
+\end{itemize}
+
+\textbf{Data separation for experimental validity:} To prevent data leakage (train-test contamination), the adapters were trained on clinical cases from \texttt{agentclinic\_nejm.jsonl} (New England Journal of Medicine scenarios), while all evaluation experiments (E1--E6) were conducted exclusively on \texttt{agentclinic\_medqa.jsonl} (107 MedQA scenarios). This strict separation ensures that the adapter's contribution to E6 accuracy (54.7\%) reflects genuinely transferable clinical competence rather than memorisation of evaluation answers.
+
+At inference time, the DCG dynamically invokes \texttt{model.set\_adapter("reasoning")} before reflection and \texttt{model.set\_adapter("dialogue")} before speech generation. The adapter swap is a pointer operation ($<$1\,ms latency) that redirects which $BA$ matrices are added to the frozen $W_0$. The combined VRAM overhead of both adapters is approximately 50\,MB---negligible relative to the base model footprint---enabling this dual-adapter paradigm to operate within the same memory envelope as a single unmodified model.
 
 \section{Theoretical Underpinnings of the Architecture}
 

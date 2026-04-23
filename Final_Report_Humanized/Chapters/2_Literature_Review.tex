@@ -1,0 +1,40 @@
+\chapter{Literature Review}
+\label{Chapter2}
+\lhead{Chapter 2. \emph{Literature Review}}
+
+\section{Medical Question Answering Benchmarks}
+
+Historically, AI evaluation in medicine has relied on static Question-Answering (QA) datasets. The MedQA dataset, for example, draws from the US Medical Licensing Examination (USMLE), presenting models with a complete patient history and asking them to select the correct diagnosis or treatment plan. Other widely used datasets include PubMedQA, MedMCQA, and clinical topics from MMLU.
+
+Foundational models like GPT-4 now exceed 90\% accuracy on USMLE, surpassing expert human scores~\cite{schmidgall2024agentclinic}. But these static formats only test knowledge retrieval. They do not ask whether a model can iteratively build a differential diagnosis, handle clinical uncertainty across turns, or seek out evidence through targeted questioning. Strong QA performance, in other words, tells us little about competence in actual interactive diagnostic settings.
+
+\section{Dialogue-Based and Multi-Agent Clinical Simulations}
+
+Given these limitations, recent work has moved toward dialogue-based clinical simulations. Early efforts relied on rule-based templates and decision trees, which produced deterministic but rigid interactions that lacked conversational flexibility.
+
+More recent systems—AMIE (Articulate Medical Intelligence Explorer)~\cite{tu2024towards} and Agent Hospital~\cite{li2024agenthospital}—assign LLMs to specific clinical roles. AMIE showed improved diagnostic accuracy in simulated multi-turn conversations, but it remains closed-source, tied to proprietary models, and difficult to replicate. Agent Hospital offers an evolvable simulation environment, but it relies on homogeneous agent designs, a structural choice that introduces what we identify in this thesis as \textit{Lexical Leakage}. Existing simulation frameworks also tend to function as end-to-end benchmarks rather than extensible research tools that support bias injection or local open-source model inference~\cite{fan2024aihospital,liao2024automatic}.
+
+\section{Bias and Fairness in Medical AI}
+
+Implicit demographic biases related to race, gender, and socioeconomic status are well documented in the healthcare literature and are known to propagate into LLMs trained on historical corpora. But \textit{cognitive biases}—systematic deviations from normative reasoning—are equally consequential in clinical AI, and they receive far less attention.
+
+Anchoring bias, confirmation bias, and recency effects all shape human diagnostic reasoning and can lead to systematic errors in practice~\cite{johri2023guidelines}. LLMs display similar tendencies when early conversational cues disproportionately steer their later reasoning. Most existing clinical AI benchmarks offer no structured way to inject such biases into patient responses or clinician reasoning, making it difficult to rigorously study robustness and behavioural sensitivity under controlled conditions.
+
+\section{Open-Source LLMs and Inference Optimisation}
+
+Open-source LLMs such as Llama-3, Mistral, and Mixtral offer transparency and local deployability. The challenge, however, is GPU memory. A single 7B-parameter model in FP16 requires roughly 14\,GB of VRAM, and multi-agent simulations need several models loaded at once.
+
+Recent advances in quantisation—particularly NormalFloat4 (NF4) via QLoRA and Flash Attention~\cite{du2023improving}—allow substantial memory savings with near-zero loss in reasoning quality. These techniques are what make the heterogeneous multi-engine architecture proposed in this thesis feasible on a single-GPU setup.
+
+\section{Summary of Research Gaps}
+
+Surveying the literature, several limitations stand out:
+\begin{enumerate}
+    \item Static QA benchmarks do not emulate multi-step, sequential clinical reasoning.
+    \item Existing simulation frameworks lack modularity, transparency, and open-source compatibility.
+    \item Lexical Leakage in homogeneous multi-agent systems artificially inflates diagnostic accuracy.
+    \item Bias modelling is superficial or absent, precluding rigorous safety analysis.
+    \item Process-oriented evaluation metrics (trajectory, stability, test rationality) are absent from existing frameworks.
+\end{enumerate}
+
+These gaps motivated the architectural and methodological choices behind AgentClinic~v2, which we describe in the chapters that follow.

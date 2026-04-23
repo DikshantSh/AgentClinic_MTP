@@ -1,0 +1,81 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[margin=2.5cm, headheight=15pt]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{parskip}
+
+% ---- Colours ----
+\definecolor{acadblue}{HTML}{1A5276}
+\definecolor{analogygreen}{HTML}{1E8449}
+\definecolor{mattersred}{HTML}{922B21}
+\definecolor{vivacolor}{HTML}{6C3483}
+\definecolor{exampleorange}{HTML}{CA6F1E}
+
+% ---- Coloured Boxes ----
+\newtcolorbox{acadbox}[1][]{colback=acadblue!5, colframe=acadblue, fonttitle=\bfseries, title={#1}}
+\newtcolorbox{analogybox}[1][]{colback=analogygreen!5, colframe=analogygreen, fonttitle=\bfseries, title={#1}}
+\newtcolorbox{mattersbox}[1][]{colback=mattersred!5, colframe=mattersred, fonttitle=\bfseries, title={#1}}
+\newtcolorbox{vivabox}[1][]{colback=vivacolor!5, colframe=vivacolor, fonttitle=\bfseries, title={#1}}
+\newtcolorbox{examplebox}[1][]{colback=exampleorange!5, colframe=exampleorange, fonttitle=\bfseries, title={#1}}
+
+% ---- Headers ----
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\thepage}
+\lhead{\leftmark}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---- Hyperlinks ----
+\hypersetup{colorlinks=true, linkcolor=acadblue, citecolor=acadblue, urlcolor=acadblue}
+
+% ---- Title ----
+\title{\Huge\bfseries Internal Study Guide\\[0.5cm]
+\Large Evaluating Large Language Models for Clinical\\Decision-Making Using AgentClinic\\[0.5cm]
+\normalsize\textit{Extreme-Detail Viva Preparation Document}}
+\author{Dikshant Sharma \\ IIT Kharagpur $\cdot$ Dept.\ of Artificial Intelligence \\ Roll No: 21IM3AI29}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\vfill
+\begin{center}
+\textit{For internal study ONLY --- not for submission.}\\
+\textit{Covers every concept with academic definitions, simple analogies,}\\
+\textit{worked examples, and potential viva questions.}
+\end{center}
+\vfill
+
+\clearpage
+\tableofcontents
+\clearpage
+
+\setstretch{1.4}
+
+\input{Chapters/ch1_introduction}
+\input{Chapters/ch2_literature_review}
+\input{Chapters/ch3_dataset}
+\input{Chapters/ch4_initial_framework}
+\input{Chapters/ch5_enhanced_methodology}
+\input{Chapters/ch6_results}
+\input{Chapters/ch7_discussion}
+\input{Chapters/ch8_conclusion}
+\input{Chapters/ch9_code_workflow}
+
+\end{document}
