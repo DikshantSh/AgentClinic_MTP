@@ -1,0 +1,514 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ============================================================
+% THEME & COLORS
+% ============================================================
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+\definecolor{iitkgpblue}{RGB}{0,51,102}
+\definecolor{accentteal}{RGB}{0,128,128}
+\definecolor{lightbg}{RGB}{240,248,255}
+\definecolor{alertred}{RGB}{192,57,43}
+\definecolor{successgreen}{RGB}{39,174,96}
+\definecolor{warnorange}{RGB}{243,156,18}
+
+\setbeamercolor{palette primary}{bg=iitkgpblue,fg=white}
+\setbeamercolor{palette secondary}{bg=accentteal,fg=white}
+\setbeamercolor{palette tertiary}{bg=iitkgpblue,fg=white}
+\setbeamercolor{title}{fg=white,bg=iitkgpblue}
+\setbeamercolor{frametitle}{fg=white,bg=iitkgpblue}
+\setbeamercolor{block title}{bg=accentteal,fg=white}
+\setbeamercolor{block body}{bg=lightbg}
+\setbeamercolor{item}{fg=accentteal}
+\setbeamercolor{alerted text}{fg=alertred}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{palette primary}
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.44\paperwidth,ht=2.5ex,dp=1ex,center]{palette secondary}
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.23\paperwidth,ht=2.5ex,dp=1ex,right]{palette primary}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}
+}
+
+% ============================================================
+% PACKAGES
+% ============================================================
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, fit, backgrounds}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fontenc}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{multirow}
+\usepackage{pifont}
+\usepackage{wrapfig}
+\graphicspath{{Pictures/}}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{iitkgpblue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{accentteal},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{iitkgpblue!30},
+  backgroundcolor=\color{lightbg},
+  showstringspaces=false,
+}
+
+% ============================================================
+% TITLE INFO
+% ============================================================
+\title[AgentClinic: LLMs for Clinical Decision-Making]{Evaluating Large Language Models for\\Clinical Decision-Making Using\\Multi-Agent Simulations}
+\author[Dikshant Sharma]{Dikshant Sharma}
+\institute[IIT Kharagpur]{Department of Computer Science \& Engineering\\Indian Institute of Technology Kharagpur\\[4pt]\small M.Tech in Artificial Intelligence \quad|\quad 2025--2026\\[6pt]\includegraphics[height=1.2cm]{logo}}
+\date{April 2026}
+
+\begin{document}
+
+% ============================================================
+% SLIDE 1: TITLE
+% ============================================================
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+
+% ============================================================
+% SLIDE 2: OUTLINE
+% ============================================================
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+% ============================================================
+\section{Problem \& Motivation}
+% ============================================================
+
+% SLIDE 3: THE PROBLEM
+\begin{frame}{The Problem: Static Benchmarks $\neq$ Clinical Reasoning}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{Static QA Benchmarks}
+\begin{itemize}
+  \item MedQA, USMLE, PubMedQA
+  \item \textbf{All} patient info given upfront
+  \item Single-turn, one-shot answer
+  \item GPT-4 exceeds \textbf{90\%} on USMLE
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{Real Clinical Reasoning}
+\begin{itemize}
+  \item \textbf{Interactive} \& \textbf{sequential}
+  \item Iterative hypothesis formation
+  \item Selective evidence acquisition
+  \item Reasoning under \textit{uncertainty}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.5em}
+\begin{alertblock}{Gap}
+High QA accuracy $\not\Rightarrow$ competence in actual multi-turn diagnostic consultations.
+\end{alertblock}
+
+\note{
+Static benchmarks like MedQA give the model everything—history, vitals, labs—in a single prompt. The model just selects an answer. But real clinical reasoning is fundamentally different: physicians iteratively ask questions, form hypotheses, order tests, and refine their differential. A model scoring 90\% on USMLE tells us nothing about whether it can actually conduct a patient interview. This gap is what my entire thesis is about.
+}
+\end{frame}
+
+% SLIDE 4: WHY THIS MATTERS
+\begin{frame}{Why This Matters: Patient Safety}
+\begin{itemize}
+  \item \textbf{Existing systems are closed or flawed:}
+  \begin{itemize}
+    \item AMIE (Google): Closed-source, proprietary, non-reproducible
+    \item Agent Hospital: Homogeneous agents $\rightarrow$ \alert{Lexical Leakage}
+    \item MedAgents: Static, no multi-turn simulation
+  \end{itemize}
+  \vspace{0.5em}
+  \item \textbf{Dangerous failure modes go undetected:}
+  \begin{itemize}
+    \item A model can appear \textit{confidently consistent} while being \textit{systematically wrong}
+    \item Binary accuracy masks unsafe reasoning trajectories
+    \item Cognitive biases amplify real-world clinical errors
+  \end{itemize}
+\end{itemize}
+
+\vspace{0.5em}
+\begin{block}{Core Thesis Argument}
+Clinical AI must be evaluated on its \textbf{process}—not just its terminal outcome.
+\end{block}
+
+\note{
+The stakes here are real—we're talking about systems that could inform clinical decisions. Google's AMIE showed promise but is closed-source and can't be reproduced or extended. Agent Hospital uses the same model for all agents, which I found introduces a fundamental vulnerability I call Lexical Leakage. And critically, evaluating only whether the final diagnosis is right or wrong doesn't tell you if the model ordered an MRI before checking blood pressure—that's an unsafe reasoning trajectory that accuracy alone can't capture.
+}
+\end{frame}
+
+% SLIDE 5: RESEARCH QUESTIONS
+\begin{frame}{Research Questions}
+\begin{enumerate}
+  \item[\textbf{RQ1.}] Can open-source LLMs (7B--8B) navigate multi-turn clinical consultations using local GPU inference rather than proprietary APIs?
+  \vspace{0.6em}
+  \item[\textbf{RQ2.}] Does \textit{Lexical Leakage} from homogeneous agent architectures artificially inflate diagnostic accuracy?
+  \vspace{0.6em}
+  \item[\textbf{RQ3.}] Can structured metacognitive reflection measurably improve diagnostic reasoning trajectories?
+  \vspace{0.6em}
+  \item[\textbf{RQ4.}] How vulnerable are open-source clinical LLMs to systematic cognitive bias injections (recency, confirmation)?
+\end{enumerate}
+
+\note{
+These four questions drove every architectural and experimental decision. RQ1 establishes feasibility—can we do this without GPT-4 API costs? RQ2 addresses a vulnerability I discovered in existing frameworks. RQ3 tests my main architectural innovation—the reflection node. And RQ4 probes safety: if we deploy these models, how easily can their reasoning be corrupted by the same cognitive biases that affect human doctors?
+}
+\end{frame}
+
+% ============================================================
+\section{Background Theory}
+% ============================================================
+
+% SLIDE 6: POMDP
+\begin{frame}{Theoretical Foundation: POMDP Formulation}
+Clinical reasoning $\rightarrow$ Partially Observable Markov Decision Process
+
+\vspace{0.3em}
+\begin{block}{$M = \langle S, A, T, R, \Omega, O \rangle$}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+  $S$ (State Space) & Hidden disease + physiological parameters \\
+  $A$ (Action Space) & $\{a_{\text{dialogue}},\; a_{\text{test}},\; a_{\text{diagnosis}}\}$ \\
+  $T$ (Transition) & Conversation progression over time $t$ \\
+  $R$ (Reward) & Retrospective: DS, TR, IE metrics \\
+  $\Omega$ (Observation) & Text from Patient \& Measurement agents \\
+  $O$ (Obs.\ Function) & True state $\xrightarrow{\text{Patient persona}}$ NL observations \\
+\end{tabular}
+\end{block}
+
+\vspace{0.3em}
+\begin{center}
+\begin{tikzpicture}[scale=0.85,
+    state/.style={rectangle, rounded corners, draw=iitkgpblue, fill=lightbg, thick, minimum width=2cm, minimum height=0.8cm, font=\small},
+    arr/.style={-{Stealth[length=5pt]}, thick, iitkgpblue}]
+  \node[state] (s) at (0,0) {$s_t$ (Hidden)};
+  \node[state] (a) at (4,0) {$a_t$ (Doctor)};
+  \node[state] (o) at (8,0) {$\omega_t$ (Observed)};
+  \draw[arr] (s) -- node[above,font=\scriptsize]{$O(s_t, a_t)$} (a);
+  \draw[arr] (a) -- node[above,font=\scriptsize]{Patient/Meas.} (o);
+  \draw[arr, bend left=30] (o) to node[below,font=\scriptsize]{$T(\cdot)$} (s);
+\end{tikzpicture}
+\end{center}
+
+\note{
+I formalised the entire clinical consultation as a POMDP. The true patient state—the actual disease—is hidden from the Doctor agent. The Doctor can only observe noisy text outputs from the Patient and Measurement agents. At each turn, it takes an action: ask a question, order a test, or render a diagnosis. The reward isn't optimised during the dialogue—it's computed retrospectively using my three custom metrics. This formulation is what makes the system mathematically rigorous rather than just a chatbot.
+}
+\end{frame}
+
+% SLIDE 7: QUANTIZATION & LORA
+\begin{frame}{Key Techniques: NF4 Quantization \& LoRA}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{NF4 Quantization}
+\begin{itemize}
+  \item Weights $\sim \mathcal{N}(0, \sigma^2)$ \\ $\rightarrow$ optimal 4-bit projection
+  \item \textbf{Double quantization:} quantize the quantization constants
+  \item 7B model: 14\,GB $\rightarrow$ \textbf{$\sim$4\,GB}
+  \item Near-zero reasoning quality loss
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{LoRA (Low-Rank Adaptation)}
+\begin{itemize}
+  \item Freeze base $W_0$, train $\Delta W = BA$
+  \item $B \in \mathbb{R}^{d \times r}$, $A \in \mathbb{R}^{r \times k}$; $r \ll d$
+  \item My config: $r{=}16$, $\alpha{=}32$
+  \item Targets: q, k, v, o projections
+  \item Both adapters: $\sim$50\,MB total
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.4em}
+\begin{center}
+\small\textbf{QLoRA} = 4-bit NF4 base + bf16 LoRA adapters $\rightarrow$ train on consumer GPUs
+\end{center}
+
+\note{
+These are the two key enabling technologies. NF4 quantization works because neural network weights naturally follow a normal distribution—so NormalFloat4 is the information-theoretically optimal 4-bit representation. Double quantization goes further by quantizing the quantization constants themselves, saving an additional 0.37 bits per parameter. LoRA lets me train only a small low-rank decomposition on top of the frozen base weights. The key insight is that I'm not just using these as black boxes—I engineered a system where the base model loads in 4-bit for inference, and the LoRA adapters are dynamically swapped depending on which LangGraph node is executing.
+}
+\end{frame}
+
+% ============================================================
+\section{Phase 1: Initial Framework}
+% ============================================================
+
+% SLIDE 8: PHASE 1 ARCHITECTURE
+\begin{frame}{Phase 1: Initial Framework (Fig.\ 4.1)}
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}
+  \includegraphics[width=\linewidth]{Flowchart_pic}
+  \vspace{0.2em}
+  \centering\tiny\textit{Multi-agent interaction workflow: Scenario Loader $\to$ Doctor/Patient/Measurement agents $\to$ Moderator evaluation}
+\end{column}
+\begin{column}{0.45\textwidth}
+\vspace{-0.4em}
+\begin{table}
+\centering
+\footnotesize
+\caption*{\textbf{Phase 1 Diagnostic Accuracy (107 scenarios)}}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Model} & \textbf{Acc.\ (\%)} \\
+\midrule
+Mistral-7B-Instruct & \textbf{43.9} \\
+BioGPT (1.5B) & 34.6 \\
+JSL-Med-Llama-3 & 31.8 \\
+Apollo (7B) & 23.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\begin{alertblock}{\small Key Finding: Catastrophic Forgetting}
+\footnotesize Generalist Mistral-7B \textbf{beat all} medically fine-tuned models. Domain SFT erodes multi-turn reasoning.
+\end{alertblock}
+\vspace{0.3em}
+\footnotesize\textbf{Architecture:} While-loop $\cdot$ Homogeneous weights $\cdot$ 4 agents\\
+\textbf{Hardware:} Single NVIDIA H100 NVL (95.8 GB)
+\end{column}
+\end{columns}
+\note{
+\textbf{DEEP DIVE — Phase 1 Architecture (Fig 4.1):}
+
+The flowchart on the left shows the full information flow. The Scenario Loader reads from agentclinic\_medqa.jsonl and partitions the data: the Doctor only gets the consultation objective (e.g., ''Evaluate patient with chest pain''), the Patient gets the full symptom profile, the Measurement Agent gets the lab results, and the Moderator gets the ground-truth diagnosis. This strict partitioning is the OSCE (Objective Structured Clinical Examination) structure used in real medical education.
+
+\textbf{The while-loop problem:} The orchestrator was a Python while loop: while not diagnosis\_ready: route\_message(). This is inherently fragile. When an open-source model produces a malformed stop token, or forgets to include DIAGNOSIS READY in its output, the loop either crashes or runs forever. There is no state recovery. In experiments, I observed silent skips where a scenario would terminate without a valid diagnosis — contaminating the accuracy measurement.
+
+\textbf{Why these four models?} Coverage across different training paradigms:
+- Mistral-7B: General-purpose instruction tuning (RLHF-style) on diverse web corpora
+- BioGPT: Masked language modeling pretraining on 30M PubMed abstracts — focuses exclusively on biomedical text
+- JSL-Med-Llama-3: Supervised fine-tuning on clinical NLP datasets (clinical notes, MIMIC, medical QA)
+- Apollo: General text, no medical specialization — serves as negative control
+
+\textbf{Catastrophic forgetting — the mechanism:} When you fine-tune a pretrained LLM on a narrow domain dataset (e.g., medical literature QA), you update the weights to maximize the likelihood of the training examples. But the training signal for the general-purpose conversational patterns (turn-taking, follow-up reasoning, instruction following) is absent in medical QA data. The weights for those circuits get overwritten. Result: the model becomes better at answering ''What is the treatment for atrial fibrillation?'' but worse at ''Given what the patient just said, what should I ask next?'' The multi-turn diagnostic task requires BOTH — and general Mistral-7B has the latter intact.
+
+\textbf{Expected examiner Q\&A:}
+Q: ''Why not use GPT-4 as the Doctor?''
+A: ''The thesis specifically studies open-source LLMs that can run on local hardware without API costs. GPT-4 is a black box — we can't modify its weights, inject biases in a controlled way, or train LoRA adapters on it. Local models are essential for the experimental control we need.''
+
+Q: ''BioGPT is only 1.5B parameters — isn't the comparison unfair?''
+A: ''Yes, parameter count is a confound. But even controlling for this, the pattern holds: domain fine-tuning tends to hurt multi-turn reasoning. JSL-Med-Llama-3 is 8B — comparable to Mistral-7B — and still performs 12 percentage points worse. The catastrophic forgetting effect is real regardless of model size.''
+}
+\end{frame}
+
+% SLIDE 8b: PHASE 1 ACCURACY CHART
+\begin{frame}{Phase 1 Results: Accuracy Bar Chart}
+\begin{center}
+  \includegraphics[width=0.82\textwidth]{phase1_acc}
+\end{center}
+\vspace{-0.3em}
+\begin{itemize}\small
+  \item Mistral-7B (generalist) = \textbf{43.9\%} — best without any medical specialisation
+  \item Recency bias drops it to \textbf{33.6\%}; Confirmation bias to \textbf{31.8\%}
+  \item All medically fine-tuned models underperform $\rightarrow$ \textit{catastrophic forgetting confirmed}
+\end{itemize}
+\note{
+\textbf{Reading the Phase 1 Bar Chart:}
+
+This chart plots diagnostic accuracy for the four models across 107 MedQA scenarios. The y-axis represents the percentage of scenarios where the Moderator Agent judged the Doctor's final diagnosis as semantically equivalent to the ground truth.
+
+\textbf{Why 107 scenarios?} The full AgentClinic-MedQA dataset has more cases, but running 107 scenarios × 4 models × 10 turns each already represents thousands of LLM inference calls. At ~30 seconds per inference step on the H100, a single experiment takes several hours. 107 was calibrated for statistical significance while remaining computationally feasible.
+
+\textbf{Bias results from Phase 1 (on best model Mistral-7B):}
+- No bias: 43.9\%
+- Recency bias: 33.6\% (drop of 10.3 percentage points)
+- Confirmation bias: 31.8\% (drop of 12.1 percentage points)
+These preliminary Phase 1 bias results motivated the more rigorous E4/E5 experiments in Phase 2 using the domain-specialist JSL-MedMistral model.
+
+\textbf{The accuracy metric itself:}
+Accuracy = (Number of Correct Diagnoses) / 107 × 100
+A diagnosis is ''correct'' if the Moderator Agent (running the same LLM as a semantic judge) outputs ''Yes'' when comparing the Doctor's diagnosis to the ground truth. This uses LLM-mediated semantic equivalence rather than exact string matching — so ''Heart Attack'' = ''Myocardial Infarction'' = ''AMI'' = correct.
+
+\textbf{Potential examiner critique:}
+Q: ''The Moderator uses the same type of LLM as the Doctor. Doesn't that bias the evaluation?''
+A: ''This is a acknowledged limitation. The Moderator is instructed specifically to judge semantic equivalence with a yes/no output, which is a much simpler task than clinical diagnosis. In practice, the Moderator rarely makes errors on unambiguous cases. For ambiguous cases, this is equivalent to how clinical examiners in real OSCEs exercise judgment about synonymous terminology. In future work, a rule-based ontology cross-referencing ICD-10 codes would eliminate this concern.''
+}
+\end{frame}
+
+% SLIDE 9: LEXICAL LEAKAGE
+\begin{frame}{Original Discovery: Lexical Leakage}
+\begin{center}
+\begin{tikzpicture}[scale=0.8,
+    agent/.style={rectangle, rounded corners, draw=iitkgpblue, fill=lightbg, thick, minimum width=3cm, minimum height=1.2cm, font=\small\bfseries, align=center},
+    model/.style={ellipse, draw=alertred, fill=alertred!10, thick, minimum width=2.8cm, font=\small\bfseries},
+    arr/.style={-{Stealth[length=5pt]}, thick}]
+
+  \node[agent] (doc) at (-3, 1.5) {Doctor\\Agent};
+  \node[agent] (pat) at (3, 1.5) {Patient\\Agent};
+  \node[model] (wts) at (0, -0.8) {Same Weights $W$};
+
+  \draw[arr, alertred, line width=1.5pt] (wts) -- (doc) node[midway, left, font=\scriptsize, text=alertred]{shared embeddings};
+  \draw[arr, alertred, line width=1.5pt] (wts) -- (pat) node[midway, right, font=\scriptsize, text=alertred]{shared embeddings};
+  \draw[arr, dashed, alertred, line width=1.5pt] (pat) -- (doc) node[midway, above, font=\scriptsize, text=alertred]{\textbf{Implicit information leakage}};
+\end{tikzpicture}
+\end{center}
+\vspace{-0.3em}
+
+\begin{block}{Definition (My Contribution)}
+When both Doctor and Patient share the same model weights, they project text into \textbf{identical latent embedding manifolds}. The Doctor can ``recognise'' the mathematical structure of the Patient's generated text, gaining \textbf{implicit access to ground-truth information}.
+\end{block}
+
+\vspace{0.3em}
+$\rightarrow$ \textbf{Solution:} Heterogeneous multi-engine architecture (separate model instances)
+
+\note{
+This is a vulnerability I identified and named. When you use the same 7B model for both the Doctor and Patient, both agents encode text into the same embedding space. The Doctor doesn't just read the Patient's words—it recognises the statistical fingerprint of how that model generates medical text. This means the 43.9\% accuracy in Phase 1 was partially inflated by this implicit information sharing. I proved this by showing that accuracy actually increased to 45.8\% after switching to separate models—the metacognitive reflection node more than compensated for removing this artificial advantage.
+}
+\end{frame}
+
+% SLIDE 10: TRANSITION
+\begin{frame}{Phase 1 $\rightarrow$ Phase 2: Why I Rebuilt Everything}
+\begin{enumerate}
+  \item \textbf{Non-Deterministic Execution}\\
+  \small \texttt{while}-loop crashed on malformed stop tokens; silent state skips \\[0.5em]
+
+  \item \textbf{No Trajectory Analysis}\\
+  \small A lucky guess scored the same as methodical evidence-driven reasoning \\[0.5em]
+
+  \item \textbf{Lexical Leakage}\\
+  \small Homogeneous weights $\rightarrow$ artificially inflated accuracy
+\end{enumerate}
+
+\vspace{0.8em}
+\begin{center}
+\begin{tikzpicture}
+  \node[rectangle, rounded corners, draw=alertred, fill=alertred!10, thick, minimum width=4cm, minimum height=0.8cm] (p1) {\textbf{Phase 1}: \texttt{while}-loop};
+  \node[rectangle, rounded corners, draw=successgreen, fill=successgreen!10, thick, minimum width=4cm, minimum height=0.8cm, right=2cm of p1] (p2) {\textbf{Phase 2}: LangGraph DCG};
+  \draw[-{Stealth[length=6pt]}, line width=2pt, accentteal] (p1) -- node[above, font=\small\bfseries]{Complete Redesign} (p2);
+\end{tikzpicture}
+\end{center}
+
+\note{
+These three limitations were showstoppers. The while-loop would crash when open-source models produced malformed tokens—I'd lose hours of GPU time. There was no way to measure how the model reasoned, only what it finally guessed. And Lexical Leakage meant my baseline numbers were unreliable. So I rebuilt the entire system from scratch using LangGraph as a deterministic state machine. This wasn't incremental improvement—it was a complete architectural redesign.
+}
+\end{frame}
+
+% ============================================================
+\section{Enhanced Framework Architecture}
+% ============================================================
+
+% SLIDE 11: LANGGRAPH DCG
+\begin{frame}{LangGraph Directed Cyclic Graph State Machine (Fig.\ 5.1)}
+\begin{columns}[T]
+\begin{column}{0.54\textwidth}
+  \includegraphics[width=\linewidth]{LangGraph}
+  \centering\tiny\textit{Fig 5.1: DCG topology — reflection node executes before every spoken turn}
+\end{column}
+\begin{column}{0.44\textwidth}
+\footnotesize
+\begin{block}{Graph Topology}
+\texttt{Entry} $\to$ \texttt{doctor\_reflection} $\to$ \texttt{doctor\_speaker}\\[2pt]
+\texttt{doctor\_speaker} $\xrightarrow{\text{dialogue}}$ \texttt{patient}\\
+\texttt{doctor\_speaker} $\xrightarrow{\text{REQUEST TEST}}$ \texttt{measurement}\\
+\texttt{doctor\_speaker} $\xrightarrow{\text{DIAGNOSIS READY}}$ \texttt{END}\\[2pt]
+\texttt{patient} $\to$ \texttt{doctor\_reflection} (loop)\\
+\texttt{measurement} $\to$ \texttt{doctor\_reflection} (loop)
+\end{block}
+\vspace{0.3em}
+\begin{itemize}
+  \item[\checkmark] Deterministic routing — no ambiguous transitions
+  \item[\checkmark] Reflection executes \textbf{before every turn}
+  \item[\checkmark] \texttt{ClinicalState} TypedDict: differential trajectory, tests ordered, full dialogue log
+  \item[\checkmark] Non-destructive \textbf{reducers} accumulate evidence
+\end{itemize}
+\end{column}
+\end{columns}
+\note{
+\textbf{DEEP DIVE — LangGraph DCG Architecture (Fig 5.1):}
+
+The image shows the actual LangGraph topology from the implementation. LangGraph is a graph execution framework built on top of LangChain that allows defining nodes (Python functions) and edges (routing logic) as a directed graph. Unlike a simple while-loop, the state machine guarantees that every state transition is explicit, deterministic, and auditable.
+
+\textbf{What is a TypedDict and why does it matter?}
+ClinicalState is defined as a Python TypedDict — a type-annotated dictionary. This gives us compile-time type checking and ensures every node knows exactly what keys exist in the state. The fields are:
+- last\_input\_to\_doctor: str — the most recent patient or measurement response
+- last\_doctor\_message: str — what the doctor just said
+- differential\_diagnoses: List[str] — current top-3 DDx from reflection
+- turn\_count: int — enforces N\_max\_infs = 10 termination
+- diagnosis\_ready: bool — terminal flag
+- differential\_trajectory: List[List[str]] — accumulated DDx snapshots for DS computation
+- tests\_ordered: List[str] — accumulated test names for TR computation
+- full\_dialogue: List[dict] — complete conversation with timestamps for analysis
+
+\textbf{Reducers and non-destructive updates:} LangGraph reducers define HOW node outputs are merged into the state. I used the list concatenation operator (operator.add) as the reducer for trajectory fields — this means each node APPENDS to the existing list rather than overwriting it. This is critical for maintaining the full trajectory history without losing intermediate states.
+
+\textbf{The routing function (route\_doctor):} This is a Python function that receives the current ClinicalState and returns a string indicating which node to execute next:
+- If diagnosis\_ready or turn\_count >= 10: return END
+- If ''REQUEST TEST'' in last\_doctor\_message.upper(): return ''measurement''
+- Otherwise: return ''patient''
+This routing is pure Python logic — it's deterministic given the same state, unlike the while-loop's ad-hoc conditionals.
+
+\textbf{Why LangGraph specifically?}
+Alternatives: LangChain ConversationChain (no graph structure), AutoGen (opinionated multi-agent, harder to customize), raw Python loops (non-deterministic). LangGraph was chosen because: (1) it enforces explicit state schemas, (2) it supports cyclic graphs natively, (3) it integrates with HuggingFace model wrappers cleanly, (4) it provides execution graphs you can visualize and debug.
+
+\textbf{Expected Q\&A:}
+Q: ''Why not just use AutoGen or CrewAI for multi-agent orchestration?''
+A: ''AutoGen and CrewAI are opinionated frameworks with pre-built agent roles. For this thesis, I needed fine-grained control: custom bias injection into system prompts, trajectory capture at every node, dynamic LoRA adapter swapping between graph nodes, and custom routing logic. LangGraph is an execution substrate — it doesn't make assumptions about what the agents do, just how they're connected. That flexibility was necessary for the experimental design.''
+
+Q: ''What happens if the graph exceeds the max turn count?''
+A: ''The routing function catches this: if turn\_count >= total\_inferences, it returns END regardless of whether DIAGNOSIS READY was emitted. Then the evaluation code extracts whatever is in last\_doctor\_message as the final answer. There's also a forced diagnostic closure mechanism: if the doctor's last message doesn't contain DIAGNOSIS READY, a second aggressive prompt with few-shot examples forces the model to commit to a diagnosis.''
+}
+\end{frame}
+
+% SLIDE 12: METACOGNITIVE REFLECTION
+\begin{frame}{Key Innovation: Latent Metacognitive Reflection Node}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Problem:} LLMs forced to simultaneously reason \emph{and} converse produce hallucinations and chain-of-thought leaks.
+
+\vspace{0.5em}
+\textbf{Solution:} Decouple reasoning from generation.
+
+\vspace{0.3em}
+\begin{enumerate}
+  \item \texttt{doctor\_reflection} generates JSON differential at $T{=}0.1$
+  \begin{itemize}
+    \item[\texttt{>}] \texttt{["Asthma", "COPD", "Pneumonia"]}
+  \end{itemize}
+  \item Stored in \texttt{ClinicalState} trajectory log
+  \item \textbf{NOT} injected into patient-facing dialogue
+  \item \texttt{doctor\_speaker} attends to this context $\rightarrow$ clinically grounded output
+\end{enumerate}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{block}{\footnotesize Latent Chain-of-Thought}
+\footnotesize
+Standard autoregressive LLM:
+\[P(w_t \mid w_1, \ldots, w_{t-1})\]
+Attention heads split between:\\
+\quad$\bullet$ Syntactic fluency\\
+\quad$\bullet$ Medical deduction\\[0.3em]
+\textbf{My approach:} separate passes for each task \\ $\rightarrow$ no capacity splitting
+\end{block}
+\end{column}
+\end{columns}
+
+\note{
+This is probably my most important contribution. Human clinicians maintain a mental differential diagnosis that evolves silently—they don't tell the patient "I'm now considering cancer." Standard LLMs have no equivalent. When you ask a model to simultaneously reason about diagnoses and speak to a patient, its attention heads split capacity between syntactic fluency and medical deduction, leading to hallucinations. My reflection node forces the model to first output its differential as a structured JSON array at very low temperature (0.1 for deterministic extraction), and only then generate spoken dialogue. The key insight: the reasoning is observable and graphable turn-by-turn, but invisible to the patient.
+}
+\end{frame}
+
+\input{slides_part2}
+
+\end{document}

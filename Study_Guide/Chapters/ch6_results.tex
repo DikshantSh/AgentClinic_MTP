@@ -34,7 +34,7 @@ E6 & JSL-MedMistral-7B + LoRA & None & Yes \\
 \midrule
 E1 & Mistral-7B & None & 45.6 & 0.56 & 0.63 & 1.13 \\
 E2 & JSL-MedMistral & None & 50.2 & 0.68 & 0.71 & 0.98 \\
-E3 & Llama-3.1-8B & None & 53.5 & 0.65 & 0.79 & 1.05 \\
+E3 & Llama-3.1-8B & None & 51.5 & 0.63 & 0.76 & 1.02 \\
 E4 & JSL-MedMistral & Recency & 38.1 & 0.45 & 0.58 & 1.34 \\
 E5 & JSL-MedMistral & Confirmation & 31.4 & 0.88 & 0.41 & 0.61 \\
 E6 & JSL-Med + LoRA & None & \textbf{54.7} & 0.72 & 0.76 & 1.02 \\
@@ -139,7 +139,7 @@ Despite \textit{removing} Lexical Leakage by switching to heterogeneous engines,
 
 \subsubsection{Finding 2: Why E3 $>$ E2 (Instruction Alignment vs.\ Domain Fine-Tuning)}
 
-Llama-3.1-8B (E3: 53.5\%) outperformed JSL-MedMistral (E2: 50.2\%) despite having \textit{less} medical domain knowledge. Llama-3.1's superior \textbf{instruction alignment} gave it better command following ($TR = 0.79$ vs.\ 0.71), better multi-turn coherence, and better conditional routing compliance. In interactive clinical simulation, \textit{how well you follow instructions} matters as much as \textit{what you know about medicine}.
+Llama-3.1-8B (E3: 51.5\%) outperformed JSL-MedMistral (E2: 50.2\%) despite having \textit{less} medical domain knowledge. Llama-3.1's superior \textbf{instruction alignment} gave it better command following ($TR = 0.76$ vs.\ 0.71), better multi-turn coherence, and better conditional routing compliance. In interactive clinical simulation, \textit{how well you follow instructions} matters as much as \textit{what you know about medicine}.
 
 \subsubsection{Finding 3: E4 Recency Bias --- ``Hypothesis Thrashing''}
 

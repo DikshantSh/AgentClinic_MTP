@@ -1,0 +1,16 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Overview of the multi-agent interaction workflow used in the clinical simulation framework. The Scenario Loader initializes each case and distributes case-specific information to the appropriate agents. The Doctor Agent performs history-taking, hypothesis generation, and test ordering. The Patient Agent produces symptom-grounded responses, while the Measurement Agent returns structured diagnostic tests upon request. All communication flows through the Interaction Orchestrator, which ensures turn-taking and state management. Once the Doctor provides a final diagnosis, the Moderator Agent evaluates its correctness through semantic comparison.}}{12}{figure.caption.47}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Baseline diagnostic accuracy of open-source LLMs in the initial simulation framework. Notably, the generalist Mistral-7B-Instruct-v0.2 outperformed all medically fine-tuned models.}}{16}{figure.caption.59}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces LangGraph DCG topology of the enhanced framework. The \texttt {doctor\_reflection} node ensures reasoning trajectories are recorded systematically before each spoken turn, providing a structured metacognitive mechanism without contaminating patient-facing dialogue.}}{23}{figure.caption.78}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Diagnostic accuracy across the enhanced framework experiments. Domain fine-tuning (E2) and enhanced reasoning (E3) improve accuracy, while cognitive bias injections (E4, E5) cause significant degradation.}}{30}{figure.caption.105}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Diagnostic Stability (DS) across unbiased configurations. The generalist E1 baseline exhibits lower stability ($DS = 0.56$), indicating frequent hypothesis revisions. Domain fine-tuning anchors reasoning more firmly ($E2$: $DS = 0.68$).}}{32}{figure.caption.108}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Failure modes under cognitive bias injection. Recency bias causes hypothesis thrashing (low $DS = 0.45$, low accuracy 38.3\%). Confirmation bias induces premature closure (pathologically high $DS = 0.88$, lowest accuracy 31.8\%).}}{33}{figure.caption.110}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Comparative analysis of E2 (JSL-MedMistral base) versus E6 (JSL-MedMistral with Dynamic LoRA routing). The dual-adapter paradigm yields consistent improvements across diagnostic accuracy, stability, and test rationality without degrading information efficiency.}}{35}{figure.caption.112}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

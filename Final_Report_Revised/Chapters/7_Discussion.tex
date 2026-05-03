@@ -1,0 +1,43 @@
+\chapter{Discussion}
+\label{Chapter7}
+\lhead{Chapter 7. \emph{Discussion}}
+
+
+\section{Impact of Metacognitive Reflection}
+
+A central result of the transition to the enhanced framework is the effect of removing Lexical Leakage. In the initial system, the homogeneous Mistral-7B architecture achieved 43.9\% accuracy, but there was a legitimate concern that some of that performance derived from implicit information sharing through the shared embedding manifold (Section~4.6).
+
+Accuracy was expected to drop once strict heterogeneous engine isolation was enforced. Instead, baseline accuracy \textbf{increased to 45.8\%}. The LangGraph DCG and the forced metacognitive reflection node (Section~5.4.2) provide a reasoning framework strong enough to more than offset the removal of Lexical Leakage. The structured JSON differential generated before each spoken turn stabilises the clinical trajectory and suppresses the iterative hallucinations that characterised the ad-hoc loop.
+
+\section{Domain Specialisation versus Instruction Alignment}
+
+The E2 and E3 results highlight an ongoing tension in medical AI. Fine-tuning on biomedical literature (JSL-MedMistral, E2) improves diagnostic vocabulary and pathological anchoring, but it tends to erode the broader logical reasoning and instruction-following abilities that multi-turn simulation demands. This trade-off---termed \textit{catastrophic forgetting}---was already visible in the initial framework (Section~4.4), where domain-specialised models fell short of the generalist Mistral-7B despite possessing greater biomedical knowledge~\cite{tang2023medagents}.
+
+A sufficiently large, highly instruction-aligned generalist model like Llama-3.1-8B (E3) appears better suited to the sequential, multi-conditional reasoning required for interactive clinical consultation. The implication is that for interactive clinical AI, \textit{instruction alignment and logical deduction} matter as much as, if not more than, specialty medical recall. The ideal clinical agent likely needs both, which is exactly what the E6 Dynamic LoRA experiment set out to test.
+
+\section{Resolving Trade-offs via Dynamic LoRA}
+
+E6 provides evidence that the specialisation--alignment trade-off is not inherent to LLM architecture but rather a consequence of monolithic weight modification. By deploying task-specific LoRA adapters that activate conditionally on the LangGraph node, the domain-expert JSL-MedMistral model reached 55.1\% accuracy, surpassing both its unmodified baseline (E2: 50.5\%) and the instruction-aligned Llama-3.1-8B (E3: 51.4\%).
+
+What this means in practice: the reasoning adapter concentrates the model's attention capacity on medical differential enumeration during the reflection phase, while the dialogue adapter maintains conversational coherence during patient interaction. Neither adapter catastrophically modifies the base model's pre-trained weights. The improvement in Diagnostic Stability ($DS$: $0.68 \to 0.72$) and Test Rationality ($TR$: $0.71 \to 0.76$) confirms that these are not superficial accuracy gains but reflect genuinely improved reasoning trajectories.
+
+\section{Clinical Safety and Cognitive Biases}
+
+The E4 and E5 findings have serious implications for deploying open-source LLMs in clinical decision support. A model's context window is inherently a vector for recency bias: if an LLM sequentially processes multiple cardiac cases in an emergency room setting, its tendency to diagnose a subsequent, unrelated case as cardiac-related goes up because of the disproportionate attention weights assigned to recent tokens.
+
+Without explicit architectural safeguards, such as enforced context resets between cases, constrained attention windowing, or metacognitive override prompts, LLMs will consistently replicate and may amplify human cognitive errors. The finding that confirmation bias produces a $DS$ of $\approx$0.88 (high apparent stability) while simultaneously yielding the lowest accuracy ($\sim$31.8\%) is particularly concerning: a model can appear \textit{confidently consistent} while being systematically wrong. In a clinical setting, that kind of failure mode has direct patient safety consequences.
+
+\section{Implications for Clinical AI Evaluation Standards}
+
+A secondary contribution of this work is showing that binary diagnostic accuracy is an insufficient proxy for clinical AI safety. The process-oriented metrics introduced here---Diagnostic Stability, Test Rationality, and Information Efficiency---reveal behaviours that outcome accuracy entirely masks. A model that achieves 45.8\% correct terminal diagnoses but exhibits $TR < 0.5$ (ordering invasive procedures before basic vitals) or $DS < 0.4$ (switching erratically between unrelated diagnoses) would be an unacceptable clinical risk, regardless of its accuracy number. Future evaluation standards for clinical LLMs should mandate process-level reporting alongside outcome accuracy~\cite{johri2023guidelines}.
+
+\section{Limitations and Metric Vulnerabilities}
+
+A key limitation of the current framework is that the Measurement Agent operates only in the text domain. Real-world diagnostics depend heavily on visual data; integrating Vision-Language Models (VLMs) to process raw ECG waveforms, chest radiographs, and histological slides is an important frontier that has not yet been addressed. All experiments were also conducted on the AgentClinic-MedQA subset, and generalisation to broader clinical datasets such as MIMIC-IV or NEJM case challenges would require separate investigation.
+
+Additionally, this thesis acknowledges limitations in the mathematical formulations of the custom process-oriented metrics computed by the \texttt{ClinicalTrajectoryEvaluator}:
+\begin{enumerate}
+    \item \textbf{Diagnostic Stability (DS) and Synonymy:} The current DS metric relies on textual Jaccard similarity. This strictly penalizes valid synonymous medical terminology. A necessary evolution is transitioning to Semantic Cosine Similarity using clinical embeddings (e.g., \texttt{BioBERT}) to calculate the physiological stability of hypotheses.
+    \item \textbf{Test Rationality (TR) Bounding:} TR penalizes advanced test requests prior to basic vitals. This metric is strictly bounded to \textit{outpatient OSCE scenarios}. In emergency or trauma protocols, time-critical deviations are necessary, and the metric would erroneously penalize rapid advanced imaging. Furthermore, the TR formulation inherently assumes the model orders at least one test; a model exhibiting premature closure by guessing without requesting any examinations would falsely trigger $TR = 1$. Future work must condition TR explicitly on $N_{tests} \geq 1$.
+    \item \textbf{Information Efficiency (IE) and Hallucination Vulnerability:} The IE formulation ($IE = N_{\text{unique}}/T$) currently functions as an unbounded ratio. To prevent artificial score inflation from excessive text generation, future iterations must introduce a weighted penalty that bounds the numerator to \textit{clinically plausible} unique differential hypotheses.
+\end{enumerate}

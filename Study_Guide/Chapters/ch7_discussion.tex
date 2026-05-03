@@ -36,7 +36,7 @@ A fundamental tension exists in medical AI:
     \item \textbf{Instruction alignment} (via RLHF/DPO on general instruction data) preserves multi-step logical reasoning, command following, and conversational coherence.
 \end{itemize}
 
-Evidence: JSL-MedMistral (E2: 50.2\%) has superior medical knowledge but lower TR (0.71). Llama-3.1 (E3: 53.5\%) has superior instruction following and higher TR (0.79). E3 outperforms E2 by 3.3 percentage points.
+Evidence: JSL-MedMistral (E2: 50.2\%) has superior medical knowledge but lower TR (0.71). Llama-3.1 (E3: 51.5\%) has superior instruction following and higher TR (0.76). E3 outperforms E2 by 1.3 percentage points.
 
 \textbf{Implication:} For interactive clinical AI, \textit{instruction alignment and logical deduction} are as critical as---or more critical than---specialty medical knowledge retrieval. The optimal clinical agent requires both.
 \end{acadbox}
@@ -56,7 +56,7 @@ The E6 experiment proves that the specialisation--alignment trade-off is \textbf
     \item Neither adapter catastrophically modifies the base model's pre-trained weights
 \end{itemize}
 
-Result: E6 (54.7\%) surpasses both E2 (50.2\%) and E3 (53.5\%), demonstrating that you can have both domain expertise \textit{and} instruction alignment simultaneously through adapter decomposition.
+Result: E6 (54.7\%) surpasses both E2 (50.2\%) and E3 (51.5\%), demonstrating that you can have both domain expertise \textit{and} instruction alignment simultaneously through adapter decomposition.
 \end{acadbox}
 
 \begin{mattersbox}[\textcolor{white}{Why It Matters for This Thesis}]

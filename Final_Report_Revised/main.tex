@@ -1,0 +1,161 @@
+\documentclass[12pt, a4paper, oneside]{Thesis}
+\usepackage{wrapfig}
+\usepackage{lscape}
+\usepackage{rotating}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{multirow}
+\usepackage[T1]{fontenc}
+\usepackage{makecell}
+\usepackage{changepage}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{enumitem}
+
+% remove hyphenation
+\tolerance=9999
+\emergencystretch=10pt
+\hyphenpenalty=10000
+\exhyphenpenalty=100
+
+\usepackage{lineno,hyperref}
+\modulolinenumbers[5]
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit, backgrounds, calc, arrows.meta}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+
+\setcounter{secnumdepth}{3}
+\graphicspath{{Pictures/}}
+
+\usepackage{natbib}
+
+% All links/text BLACK --- no coloured hyperlinks
+\hypersetup{urlcolor=black, linkcolor=black, citecolor=black, colorlinks=false}
+
+% ---- Thesis Metadata ----
+\thesistitle{Design and Evaluation of Multi-Agent LLM Systems for Interactive Clinical Diagnosis}
+\supervisor{Prof. Jiaul Hoque Paik}
+\degree{Master of Technology (M.Tech)}
+\degreemajor{Department of Artificial Intelligence}
+\authors{Dikshant Sharma}
+\rollno{21IM3AI29}
+\university{Indian Institute of Technology Kharagpur}
+\department{Department of Artificial Intelligence}
+\unisite{http://www.iitkgp.ac.in}
+\depsite{http://www.iitkgp.ac.in}
+\placeshrt{Kharagpur}
+\placelng{Kharagpur - 721302, India}
+\datesub{April, 2026}
+\datesig{April, 2026}
+\semsub{the academic year 2025--2026}
+\keywords{Large Language Models, Clinical Decision-Making, Multi-Agent Systems, LangGraph, Cognitive Bias, Process Evaluation}
+\coursecd{Project IV (AI67102)}
+
+\title{\fontsize{13.2pt}{16pt}\selectfont \ttitle}
+
+\begin{document}
+
+\frontmatter
+\setstretch{1.6}
+
+\fancyhead{}
+\rhead{\thepage}
+\lhead{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\hypersetup{pdftitle={\ttitle}}
+\hypersetup{pdfauthor=\authornames}
+\hypersetup{pdfkeywords=\keywordnames}
+
+%------------------------------------------------------------------------
+% TITLE PAGE
+%------------------------------------------------------------------------
+\maketitle
+\clearpage
+
+%------------------------------------------------------------------------
+% DECLARATION
+%------------------------------------------------------------------------
+\Declaration{}
+
+%------------------------------------------------------------------------
+% CERTIFICATE
+%------------------------------------------------------------------------
+\addtotoc{Certificate}
+\certificate{\addtocontents{toc}{}
+
+%------------------------------------------------------------------------
+% ABSTRACT
+%------------------------------------------------------------------------
+\addtotoc{Abstract}
+\abstract{\addtocontents{toc}{}
+
+The integration of Large Language Models (LLMs) into clinical diagnostic workflows necessitates evaluation paradigms that transcend static, multiple-choice question-answering. Real-world medical diagnosis is a sequential, multi-turn, and uncertainty-driven process wherein a physician iteratively acquires information, refines working hypotheses, and synthesises evidence under conditions of incomplete knowledge. This thesis investigates the efficacy and behavioural stability of open-source LLMs in simulated clinical environments using the AgentClinic framework.
+
+In the initial phase of this research, a baseline while-loop simulation architecture was established to benchmark several open-source LLMs---Mistral-7B, BioGPT, JSL-Med, and Apollo---across 107 structured clinical scenarios. While open-source models demonstrated baseline clinical competence, with Mistral-7B achieving up to 43.9\% diagnostic accuracy on the AgentClinic-MedQA subset, the unconstrained architecture induced erratic reasoning trajectories and introduced a risk of \textit{Lexical Leakage}---a vulnerability wherein homogeneous multi-agent systems implicitly share ground-truth information through shared model weights.
+
+In the enhanced phase of this research, \textbf{the AgentClinic framework was redesigned} as a multi-agent system employing a LangGraph Directed Cyclic Graph (DCG) for deterministic orchestration. To eliminate Lexical Leakage without exceeding the 95.8\,GB VRAM constraint of an NVIDIA H100 GPU, a heterogeneous multi-engine architecture was implemented, leveraging 4-bit NormalFloat4 (NF4) double quantisation. A latent metacognitive reflection node was introduced, rendering internal diagnostic reasoning observable and quantifiable. Three process-oriented metrics were formally defined: Diagnostic Stability (DS), Test Rationality (TR), and Information Efficiency (IE).
+
+Evaluations on the structured MedQA dataset demonstrate that the structural framework of the DCG and reflection node improved baseline accuracy to \textbf{45.8\%}, indicating that the reasoning gains from forced metacognition more than compensate for the removal of implicit Lexical Leakage. Empirical results further indicate that medically fine-tuned models (JSL-MedMistral) and advanced reasoners (Llama-3.1) improve outcome accuracy, yet remain susceptible to cognitive distortions---recency bias triggering hypothesis instability and confirmation bias inducing premature diagnostic closure. This thesis establishes a trajectory-aware evaluation platform for clinical AI systems.
+
+\clearpage
+
+%------------------------------------------------------------------------
+% ACKNOWLEDGEMENTS
+%------------------------------------------------------------------------
+\setstretch{1.3}
+\acknowledgements{\addtocontents{toc}{}
+
+I sincerely thank my project guide, Prof. Jiaul Hoque Paik, for his invaluable insights and constructive feedback, which made this project a successful endeavour. Furthermore, I thank the Department of Artificial Intelligence for granting me the opportunity and resources to pursue this project. I extend my gratitude to the IIT Kharagpur computing infrastructure team for providing access to the NVIDIA H100 NVL GPU cluster that made these experiments possible. I finally extend my deepest gratitude to my family and friends for their unwavering support throughout this journey.
+
+}
+
+%------------------------------------------------------------------------
+% TABLE OF CONTENTS / FIGURES / TABLES
+%------------------------------------------------------------------------
+\clearpage
+\pagestyle{fancy}
+\lhead{\emph{Contents}}
+\tableofcontents
+
+
+%------------------------------------------------------------------------
+% MAIN MATTER
+%------------------------------------------------------------------------
+\mainmatter
+\pagestyle{fancy}
+
+\input{Chapters/1_Introduction}
+\input{Chapters/2_Literature_Review}
+\input{Chapters/3_Dataset}
+\input{Chapters/4_Initial_Framework}
+\input{Chapters/5_Enhanced_Methodology}
+\input{Chapters/6_Results}
+\input{Chapters/7_Discussion}
+\input{Chapters/8_Conclusion}
+
+\appendix
+\input{Chapters/Appendix_A}
+
+%------------------------------------------------------------------------
+% BIBLIOGRAPHY
+%------------------------------------------------------------------------
+\label{References}
+\lhead{\emph{Bibliography}}
+\nocite{*}
+\bibliographystyle{unsrt}
+\bibliography{Bibliography}
+
+\end{document}

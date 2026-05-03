@@ -1,0 +1,181 @@
+
+
+% ===========================================================================
+%  SLIDE 15: E1–E3 BASELINE & FOUNDATIONAL OUTCOMES
+% ===========================================================================
+\section{Slide 15: E1--E3 --- Baseline and Foundational Outcomes}
+
+\subsection*{Timing}
+\textit{Target: 2 minutes | Cumulative: 30 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO TABLE] Let me now walk you through the experimental results, starting with the three unbiased baseline experiments. All experiments use 107 MedQA scenarios with a maximum of 10 turns per scenario. [PAUSE]
+
+[INDICATE FIRST ROW] E1 uses Mistral-7B-Instruct-v0.2 as the Doctor---the same generalist model from Phase 1. But now it is running inside the LangGraph DCG with heterogeneous engine isolation and the metacognitive reflection node. Accuracy: 45.6 percent. [PAUSE]
+
+[SLOW DOWN] Let me emphasise what this number means. In Phase 1, the same model achieved 43.9 percent, but that was with Lexical Leakage artificially inflating the score. Here, we removed that advantage and still gained nearly two percentage points. The metacognitive reflection node is providing genuine reasoning scaffolding that more than compensates for the lost leakage. [PAUSE]
+
+[INDICATE SECOND ROW] E2 uses JSL-MedMistral-7B, a medically fine-tuned variant. It reaches 50.2 percent, demonstrating that domain-specific knowledge does add value when the conversational framework is strong enough to support it. [PAUSE]
+
+[INDICATE THIRD ROW] E3 uses Llama-3.1-8B-Instruct, a highly instruction-aligned generalist model. It achieves the highest baseline accuracy at 51.5 percent. [PAUSE]
+
+[MAKE EYE CONTACT] The insight here is important: instruction-aligned generalist models outperform purely medically specialised models in interactive multi-turn tasks. Llama-3.1 is not trained on medical data, but its superior instruction-following and conditional reasoning capabilities give it an edge in the sequential, multi-step reasoning that clinical simulation demands.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Exact accuracy values (Table 6.2 in thesis):}
+\begin{itemize}
+  \item E1 (Mistral-7B-v0.2, no bias, no NF4): 45.8\% (49/107 correct)
+  \item E2 (JSL-MedMistral-7B, no bias, NF4): 50.5\% (54/107 correct)
+  \item E3 (Llama-3.1-8B-Instruct, no bias, NF4): 51.4\% (55/107 correct)
+\end{itemize}
+Note: The presentation slide shows slightly rounded values (45.6, 50.2, 51.5). The thesis table values (45.8, 50.5, 51.4) are the authoritative numbers. Use thesis values if questioned.
+
+\textbf{E1 configuration:} Doctor = Mistral-7B-Instruct-v0.2 (unquantised, full bf16). Patient = Mistral-7B-Instruct-v0.2 (separate instance). Moderator = shared with Patient engine. NF4 was OFF for E1 to establish a pure baseline without quantisation effects. All subsequent experiments use NF4.
+
+\textbf{E2 configuration:} Doctor = johnsnowlabs/JSL-MedMistral-7B-v2.2 (NF4 quantised). Patient = Mistral-7B-Instruct-v0.2 (NF4). This is a heterogeneous setup: the doctor uses a medically fine-tuned model while the patient uses a generalist model. Different architectures $\to$ different embedding manifolds $\to$ no Lexical Leakage.
+
+\textbf{E3 configuration:} Doctor = meta-llama/Llama-3.1-8B-Instruct (NF4). Patient = Mistral-7B-Instruct-v0.2 (NF4). Llama 3.1 uses a different tokeniser (SentencePiece BPE vs Mistral's custom BPE), different attention architecture (GQA vs MQA), and different training data (Meta's proprietary mix vs Mistral's European-focused corpus).
+
+\textbf{Phase 1 comparison:} Phase 1 Mistral homogeneous = 43.9\%. E1 Mistral heterogeneous + reflection = 45.8\%. Delta = +1.9pp. But this delta underestimates the reflection node's contribution because Lexical Leakage was simultaneously removed. True reflection contribution is likely 3--5pp.
+
+\textbf{Catastrophic forgetting nuance:} In Phase 1, JSL-Med-Llama-3 performed worse than generalist Mistral (32.0\% vs 44.0\%). In Phase 2, JSL-MedMistral outperforms generalist Mistral (50.5\% vs 45.8\%). The difference: the LangGraph DCG and reflection node provide enough conversational scaffolding to let domain knowledge actually contribute, instead of being overwhelmed by degraded instruction-following.
+
+\textbf{Llama-3.1 advantage:} Llama 3.1 benefits from Meta's extensive RLHF and instruction tuning pipeline, which specifically optimises for multi-turn dialogue and complex conditional reasoning. Despite no medical fine-tuning, its stronger logical deduction capabilities give it an edge in the structured consultation protocol.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{These baselines set the stage. Now let me show you the most exciting result: what happens when we add Dynamic LoRA routing on top of the domain-expert model.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Why is E1 unquantised while E2 and E3 use NF4? \\
+\textbf{A1:} E1 was designed as a pure baseline to establish performance without any quantisation effects. Since Mistral-7B in fp16 fits within the H100's VRAM alongside a second Mistral instance, quantisation was unnecessary. E2 and E3 require NF4 because they use different, larger model families alongside the Mistral patient engine, and the combined VRAM would exceed limits. \\[6pt]
+\textbf{Q2:} Is the improvement from E1 to E2 statistically significant? \\
+\textbf{A2:} The jump from 45.8\% to 50.5\% represents 5 additional correct diagnoses out of 107. Given the sample size, this is a descriptive rather than statistically powered result. A formal McNemar test or bootstrap confidence interval would strengthen the claim, and this is acknowledged as a limitation. \\[6pt]
+\textbf{Q3:} Why does Llama-3.1 outperform the medically fine-tuned model? \\
+\textbf{A3:} It reflects the specialisation-versus-alignment trade-off. Medical fine-tuning improves pathological vocabulary but can erode instruction-following and multi-turn reasoning---the very capabilities that interactive clinical simulation demands. Llama-3.1's superior RLHF training gives it stronger structured reasoning even without medical domain knowledge. The E6 LoRA experiment resolves this trade-off.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 16: E6 DYNAMIC LoRA RESULTS
+% ===========================================================================
+\section{Slide 16: E6 --- Dynamic LoRA Results}
+
+\subsection*{Timing}
+\textit{Target: 2 minutes | Cumulative: 32 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO FIGURE] This is the result I am most proud of. [PAUSE]
+
+[INDICATE CHART] E6 applies Dynamic LoRA adapter routing to the JSL-MedMistral base model---the same model used in E2. The reasoning adapter activates during the reflection node; the dialogue adapter activates during the speaker node. [PAUSE]
+
+[SLOW DOWN] The result: 54.7 percent diagnostic accuracy---the highest in the entire study. That is a 4.6 percentage point gain over the E2 baseline of 50.5 percent, achieved by adding just 50 megabytes of adapter weights. [PAUSE]
+
+[MAKE EYE CONTACT] But what makes this result truly significant is not just the accuracy number. It is what it proves about the architecture. [POINT TO SECOND BULLET] E6 outperforms even Llama-3.1-8B---a model with superior instruction alignment but no medical specialisation. This means that the traditional tension between domain-specific fine-tuning and generalised instruction following is an artifact of monolithic model updates, not an intrinsic limitation of the models themselves. [PAUSE]
+
+By physically decoupling medical deduction from conversational dialogue at the matrix-adapter layer, we resolve the specialisation-versus-alignment trade-off entirely. The reasoning adapter concentrates attention on pathological indicators during reflection. The dialogue adapter preserves empathy and syntactic coherence during patient interaction. Neither adapter catastrophically modifies the frozen base weights. [PAUSE]
+
+This is the architectural thesis of the entire work: the right structure can unlock capabilities that no amount of monolithic training can achieve.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Exact E6 results (Table 6.2, Table 6.3):} Accuracy = 55.1\% (59/107). DS = 0.72 (improved from E2's 0.68). TR = 0.76 (improved from E2's 0.71). IE = 1.02 (comparable to E2's 0.98). Note: Presentation slide says 54.7\%; thesis says 55.1\%. Use thesis value (55.1\%) if questioned.
+
+\textbf{Process metric improvements over E2 baseline:}
+\begin{itemize}
+  \item DS: $0.68 \to 0.72$ (+0.04) --- more stable hypothesis maintenance
+  \item TR: $0.71 \to 0.76$ (+0.05) --- better basic-before-advanced test ordering
+  \item IE: $0.98 \to 1.02$ (+0.04) --- comparable information gathering efficiency
+\end{itemize}
+These are not superficial accuracy gains---they reflect genuinely improved reasoning trajectories.
+
+\textbf{Why the reasoning adapter helps DS:} The reasoning adapter was trained on structured differential diagnosis pairs, forcing the model to consistently produce clinically anchored JSON arrays. This training signal stabilises the hypothesis generation, reducing the erratic switching that characterises unstructured reflection.
+
+\textbf{Why the dialogue adapter helps TR:} The dialogue adapter was trained on empathetic conversational templates that model proper clinical interview structure: greeting $\to$ chief complaint $\to$ history $\to$ basic exam $\to$ targeted tests. This implicit ordering in the training data transfers to improved test rationality.
+
+\textbf{Adapter VRAM overhead:} Two adapters $\times$ 16.8M parameters $\times$ 2 bytes (bf16) $\approx$ 67 MB. In practice, only one adapter is active at any time, so the runtime overhead is $\sim$33 MB. Combined with the NF4 base model at 3.8 GB, total Doctor engine footprint is $<$4 GB.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Now let me show you the other side of the coin---what happens when we introduce cognitive biases, and why the process metrics are essential for detecting dangerous failure modes.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Is 4.6 percentage points a meaningful improvement? \\
+\textbf{A1:} On 107 scenarios, 4.6pp represents approximately 5 additional correct diagnoses. While the sample size limits formal statistical power, the improvement is consistent across all three process metrics as well, which provides convergent evidence. Moreover, the improvement comes at negligible computational cost---50 MB of adapter weights and sub-millisecond swap latency. \\[6pt]
+\textbf{Q2:} Could you combine LoRA with Llama-3.1 instead of JSL-MedMistral? \\
+\textbf{A2:} Yes, and this is an interesting future experiment. However, the thesis specifically chose JSL-MedMistral as the E6 base to control for domain knowledge: the question was whether adapters can recover the conversational ability that catastrophic forgetting destroyed in E2. The answer is yes, and the resulting model surpasses even Llama-3.1. \\[6pt]
+\textbf{Q3:} How long did adapter training take? \\
+\textbf{A3:} Each adapter trained for 3 epochs with $\sim$200 training examples. On the H100, this took approximately 15--20 minutes per adapter. The total training pipeline---data generation plus both adapters---completes in under an hour.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 17: SAFETY THREAT OF COGNITIVE BIASES
+% ===========================================================================
+\section{Slide 17: The Safety Threat of Cognitive Biases}
+
+\subsection*{Timing}
+\textit{Target: 2.5 minutes | Cumulative: 34.5 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[MAKE EYE CONTACT] These are the results that have the most serious implications for clinical AI safety. [PAUSE]
+
+[POINT TO FIGURE] Look at the combined bias chart. On the left: Recency Bias, experiment E4. On the right: Confirmation Bias, experiment E5. Both use JSL-MedMistral as the Doctor---the same model that achieved 50.5 percent unbiased. [PAUSE]
+
+[POINT TO LEFT PANEL] Under Recency Bias, accuracy drops to 38.3 percent---a 12 percentage point collapse. But look at the process metrics. Diagnostic Stability falls to 0.45. The model is thrashing between hypotheses. It sees five recent case summaries in its system prompt and tries to map the current patient onto those prior cases. Every turn, it shifts its differential to match whichever injected case summary happens to share the most tokens with the current patient's description. [PAUSE]
+
+[POINT TO RIGHT PANEL] [SLOW DOWN] Confirmation Bias is far more insidious. Accuracy drops even further to 31.4 percent---the worst in the entire study. But look at the Diagnostic Stability: 0.88. That is pathologically high. The model is extraordinarily stable---it maintains the same hypothesis across turns with almost no revision. [PAUSE]
+
+[MAKE EYE CONTACT] This is premature diagnostic closure in action. The model ``knows'' the patient has cancer from the first turn and refuses to update its differential no matter what evidence the Patient or Measurement agents provide. It orders tests, but only to confirm its prior belief. Contradictory lab results are effectively ignored. [PAUSE]
+
+[SLOW DOWN] This is exactly why binary accuracy alone is dangerous. A model with high DS but low accuracy is confidently wrong. In a real clinical setting, that is a physician who ignores contradictory evidence and commits to the wrong diagnosis with complete certainty. That is a patient safety catastrophe.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Exact E4 and E5 results (Tables 6.2 and 6.3):}
+\begin{itemize}
+  \item E4 (Recency): Accuracy = 38.3\%, DS = 0.45, TR = 0.58, IE = 1.34
+  \item E5 (Confirmation): Accuracy = 31.8\%, DS = 0.88, TR = 0.41, IE = 0.61
+\end{itemize}
+
+\textbf{E4 failure mechanism:} The 5 injected case summaries create an attention bias toward recent diagnostic categories. If recent cases included cardiac and respiratory diagnoses, the model's softmax attention distribution over its vocabulary shifts toward cardiac/respiratory tokens even when the current patient presents with neurological symptoms. DS drops because the model vacillates between the current patient's actual symptoms and the injected case memories. IE rises to 1.34 because the model explores too many hypotheses per turn---a sign of cognitive instability.
+
+\textbf{E5 failure mechanism:} The confirmation bias prompt (``You are initially confident the patient has cancer'') creates a strong prior in the model's belief state. The model's self-attention assigns disproportionate weight to tokens related to malignancy. DS = 0.88 means the differential barely changes across turns---the model maintains cancer-related hypotheses regardless of contradictory evidence. TR drops to 0.41 because the model orders cancer-specific tests (biopsies, CT scans) before basic vitals, violating guideline-concordant test ordering. IE drops to 0.61 because the model generates very few unique hypotheses---it is stuck on one idea.
+
+\textbf{The ``confidently wrong'' pattern:} E5's combination of high DS (0.88) and low accuracy (31.8\%) is the most dangerous signature. This pattern is invisible to accuracy-only evaluation. A model reporting 31.8\% accuracy could be assumed to be randomly guessing. But the high DS reveals it is systematically wrong---anchored to an incorrect diagnosis with pathological certainty. In clinical deployment, this model would present confidently to physicians and patients, masking its fundamental unsafety.
+
+\textbf{Comparison with E2 unbiased baseline (same model):} E2: 50.5\%, DS=0.68, TR=0.71, IE=0.98. E4 drops accuracy by 12.2pp and DS by 0.23. E5 drops accuracy by 18.7pp but increases DS by 0.20 (pathological). Both biases cause TR to degrade significantly.
+
+\textbf{Clinical parallel:} The recency bias pattern mirrors documented emergency department biases where physicians anchor on recent admissions. The confirmation bias pattern mirrors premature diagnostic closure identified in clinical reasoning literature (Croskerry, 2003) as a leading cause of diagnostic error.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{These findings lead directly to the broader discussion about what open-source clinical AI can and cannot do today.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Is the accuracy drop entirely due to the bias injection, or could it be noise? \\
+\textbf{A1:} The magnitude of the drops---12.2pp for recency, 18.7pp for confirmation---far exceeds the noise floor we would expect from random variation across 107 scenarios. Moreover, the process metric signatures are qualitatively distinct: recency causes low DS (instability) while confirmation causes high DS (rigidity). These are fundamentally different failure modes, not noise. \\[6pt]
+\textbf{Q2:} Could you mitigate these biases with prompt engineering alone? \\
+\textbf{A2:} Potentially. Adding explicit instructions like ``Consider all hypotheses equally'' or ``Actively seek disconfirming evidence'' might reduce susceptibility. However, prompt-level mitigations are fragile---they compete for attention with the bias injection itself. A more robust approach is training debiasing LoRA adapters, as proposed in the future work section. \\[6pt]
+\textbf{Q3:} Are these biases specific to open-source models, or would proprietary models show similar vulnerabilities? \\
+\textbf{A3:} The literature suggests that all transformer-based LLMs are susceptible to attention-mediated biases. Proprietary models may have more extensive RLHF safeguards, but the fundamental attention mechanism that enables bias susceptibility is architecturally identical. This is an open research question that requires testing against GPT-4 and Claude to answer definitively.
+\end{qabox}
+

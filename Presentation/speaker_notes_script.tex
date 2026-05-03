@@ -1,0 +1,105 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+
+\title{Detailed Speaker Notes: AgentClinic v2.1 M.Tech Viva}
+\author{Dikshant Sharma}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+\section*{Project Storyline \& Chronological Speaker Notes}
+
+\begin{description}
+
+\item \textbf{1. The Evaluation Crisis in Clinical AI}
+\par\textit{Speaker Notes:} Good morning. I'd like to begin by highlighting the core problem that motivated this project. Currently, medical AI is evaluated on static multiple-choice datasets like MedQA. However, selecting an answer from a pre-structured vignette does not prove a model can safely navigate a dynamic, real-time patient interview where information is uncertain and iteratively acquired.
+
+\item \textbf{2. Establishing the Simulation Framework Objective}
+\par\textit{Speaker Notes:} Therefore, my primary objective was to design a multi-agent simulation framework that tests open-source Language Models not solely on their terminal accuracy, but on their procedural methodology and safety across multi-turn clinical interactions.
+
+\item \textbf{3. Formatting the Baseline Dataset}
+\par\textit{Speaker Notes:} To achieve this, I broke down the MedQA dataset. Instead of feeding the whole vignette to the Doctor agent, I split it: symptoms were given strictly to the Patient agent, and lab results were withheld for the Measurement agent. The ground truth diagnosis was kept completely hidden.
+
+\item \textbf{4. Phase 1: The Initial Homogeneous Framework}
+\par\textit{Speaker Notes:} My first iteration of the system utilized a standard while-loop to orchestrate three agents responding to each other using the exact same underlying LLM weights. It was a functional prototype, but we quickly spotted major anomalies in its execution. 
+
+\item \textbf{5. The Catastrophic Forgetting Anomaly}
+\par\textit{Speaker Notes:} The first anomaly was that generalist models like Mistral-7B were dramatically outperforming models specifically fine-tuned on medical corpora like BioGPT. The medical models had suffered from what we call "catastrophic forgetting," destroying their conversational logic in exchange for medical trivia.
+
+\item \textbf{6. Identifying Lexical Leakage}
+\par\textit{Speaker Notes:} The more critical flaw I uncovered was 'Lexical Leakage'. Because the Doctor and Patient agents shared the same neural network weights, their token embeddings occupied the exact same mathematical manifold. 
+
+\item \textbf{7. How Shared Embeddings Corrupted the Task}
+\par\textit{Speaker Notes:} Essentially, the Doctor agent could mathematically deduce the Patient's hidden condition through zero-shot knowledge transfer without having to actually perform semantic medical reasoning. The agents were implicitly co-operating.
+
+\item \textbf{8. Transition to AgentClinic v2.1 Architecture}
+\par\textit{Speaker Notes:} Realizing the initial framework's evaluation was corrupted, I architected a complete redesign of the system from the ground up, moving toward what I coined the AgentClinic v2.1 framework.
+
+\item \textbf{9. Replacing the Loop with LangGraph DCG}
+\par\textit{Speaker Notes:} First, to stop the LLMs from endlessly rambling or hallucinating transitions, I stripped out the ad-hoc while-loop. I replaced it with a LangGraph Directed Cyclic Graph, enforcing strict, deterministic state-machine routing between all agents. 
+
+\item \textbf{10. Designing the Latent Metacognitive Reflection Node}
+\par\textit{Speaker Notes:} One major addition to this LangGraph was the 'Doctor Reflection Node'. Human doctors form silent differential diagnoses while talking to patients. LLMs cannot do this concurrently without leaking their thoughts into dialogue. 
+
+\item \textbf{11. The Role of the Reflection Node}
+\par\textit{Speaker Notes:} So, I forced the DCG to route to the Reflection node before every spoken turn. The LLM must output a structured JSON array of its top-3 differential diagnoses entirely 'in its head', which I mathematically observe, but keep strictly hidden from the patient.
+
+\item \textbf{12. Initiating Heterogeneous Engine Isolation}
+\par\textit{Speaker Notes:} To solve the Lexical Leakage problem, I introduced 'Cognitive Asymmetry'. I mandated that the Doctor, Patient, and Moderator agents must execute on structurally separated, heterogeneous LLM instances to physically sever the shared manifold. 
+
+\item \textbf{13. Overcoming Extreme VRAM Hardware Bottlenecks}
+\par\textit{Speaker Notes:} The immediate challenge was hardware. Loading three separate 7-Billion parameter models on an H100 requires roughly 42 GB of VRAM, making local execution nearly impossible.
+
+\item \textbf{14. Implementing 4-bit NF4 Quantization}
+\par\textit{Speaker Notes:} To bypass this limitation, I implemented 4-bit NormalFloat4 quantization through the BitsAndBytes library. Because neural network weights follow a normal distribution, NF4 optimally compresses them, dropping my memory footprint from 14GB down to nearly 4GB per model without inducing performance collapse.
+
+\item \textbf{15. Developing the ClinicalTrajectoryEvaluator}
+\par\textit{Speaker Notes:} With a mathematically secure, multi-turn system running, I needed to evaluate the actual path the doctor took to its conclusion. To do this, I custom-built the ClinicalTrajectoryEvaluator script.
+
+\item \textbf{16. Metric 1: Diagnostic Stability Formulation}
+\par\textit{Speaker Notes:} The first custom metric acts on the hidden reflection node histories. It computes the Jaccard Similarity between consecutive differential arrays to measure "Diagnostic Stability". High stability means logical narrowing; low stability signals dangerous, erratic guessing.
+
+\item \textbf{17. Metric 2: Test Rationality Compliance}
+\par\textit{Speaker Notes:} The second metric, Test Rationality, is a binary safety compliance check. I programmed it to automatically penalize the LLM if it ordered an expensive, invasive procedure like an MRI or Biopsy before requesting foundational tests like vitals or a basic blood panel.
+
+\item \textbf{18. Metric 3: Information Efficiency}
+\par\textit{Speaker Notes:} The third metric simply tracks Information Efficiency, dividing the number of unique hypotheses investigated by the total dialogical turns to model how swiftly the LLM focuses its questioning.
+
+\item \textbf{19. The Introduction of Cognitive Biases}
+\par\textit{Speaker Notes:} I also wanted to explore ecological validity—how machines behave under flawed conditions. So, I engineered automated cognitive bias injections into the LangGraph state. 
+
+\item \textbf{20. Executing the Recency Bias Workflow}
+\par\textit{Speaker Notes:} I simulated Recency Bias by manipulating the system prompt context window to include the outcomes of the last 5 preceding cases. This exploits the transformer's attention span, causing the LLM to over-index on its immediate past history, severely dropping diagnostic accuracy.
+
+\item \textbf{21. Executing the Confirmation Bias Workflow}
+\par\textit{Speaker Notes:} Similarly, Confirmation Bias was injected by priming the Doctor with a strong but completely incorrect initial hypothesis, proving that models suffer heavily from premature diagnostic closure when their early outputs anchor their attention heads.
+
+\item \textbf{22. Tackling the Specialization vs Alignment Tradeoff}
+\par\textit{Speaker Notes:} Moving forward, I still faced the initial problem of Catastrophic Forgetting. Medically specialized models lacked conversational dialogue skills, while chat models lacked profound medical accuracy. The tradeoff seemed unavoidable.
+
+\item \textbf{23. Adapting PEFT \& LoRA Methodology}
+\par\textit{Speaker Notes:} To decouple this, I utilized Parameter-Efficient Fine Tuning. Instead of fine-tuning the entire model, I trained independent Low-Rank Adaptation (LoRA) modules—each weighing only about 25 Megabytes—using the QLoRA pipeline that we ran exclusively on the NEJM dataset split.
+
+\item \textbf{24. Dynamic LoRA Adapter Routing Execution}
+\par\textit{Speaker Notes:} The true breakthrough was dynamic routing. At inference time within LangGraph, before the doctor reflects, I trigger a pointer swap to load the 'Reasoning' LoRA. Before it speaks, I switch it to the 'Dialogue' LoRA. 
+
+\item \textbf{25. The Impact of Temporary Disablement}
+\par\textit{Speaker Notes:} Crucially, when the Patient agent speaks on the shared model, I invoke a complete adapter disablement block so that evaluating the generalist patient remains neutral. 
+
+\item \textbf{26. Baseline (E1) vs Dynamic LoRA (E6) Results}
+\par\textit{Speaker Notes:} This culmination resulted in Experiment 6. While our baseline models like Mistral and Llama peaked around 45 to 53\% accuracy, our dynamic multi-LoRA architecture reached the highest recorded peak accuracy of 54.7\%, definitively proving we can decouple reasoning from speaking at the matrix level.
+
+\item \textbf{27. Safety Conclusions Based on Output}
+\par\textit{Speaker Notes:} Ultimately, my conclusion is that while accuracy improvements are promising, the trajectory metrics generated by the system reveal that LLMs are vastly too susceptible to hypothesis thrashing and bias to be fully autonomous yet. 
+
+\item \textbf{28. Future Scope: Autonomous Clinical Alignment}
+\par\textit{Speaker Notes:} For future work, AgentClinic v2.1 natively serves as an unparalleled environment for Direct Preference Optimization. By using these very process metrics as reward signals, we can autonomously train models via self-play to prefer safer, guideline-concordant reasoning paths over lucky guessing. Thank you.
+
+\end{description}
+
+\end{document}

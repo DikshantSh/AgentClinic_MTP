@@ -1,0 +1,240 @@
+
+
+% ===========================================================================
+%  SLIDE 13: SYSTEM FLOWCHART
+% ===========================================================================
+\section{Slide 13: AgentClinic v2 --- System Flowchart}
+
+\subsection*{Timing}
+\textit{Target: 1.5 minutes | Cumulative: 22.5 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO DIAGRAM] This TikZ diagram shows exactly how the components fit together. Let me walk you through a single cycle. [PAUSE]
+
+Execution always begins at the \texttt{doctor\_reflection} node---the grey box on the left. Here, the Doctor LLM generates a latent differential diagnosis as a JSON array. This updates the \texttt{ClinicalState} but produces no patient-visible output. [PAUSE]
+
+Control then flows to the \texttt{doctor\_speaker} node. The Doctor now generates a spoken utterance---a question, a test request, or a final diagnosis. Three routing paths emerge from this node. [POINT TO ARROWS] If the Doctor asks a conversational question, we route down-left to the \texttt{patient\_node}. If the Doctor says ``REQUEST TEST: CBC,'' we route down-right to the \texttt{measurement\_node}. If the Doctor declares ``DIAGNOSIS READY'' or the turn count reaches our maximum of 10, we route right to END. [PAUSE]
+
+[SLOW DOWN] Notice that both the patient and measurement nodes feed back into \texttt{doctor\_reflection}---not directly to the speaker. This is the critical design constraint: the Doctor must always reflect before speaking. There is no shortcut. Every turn, without exception, passes through the metacognitive checkpoint. [PAUSE]
+
+This cyclic topology is why it is a Directed Cyclic Graph, not a DAG. The cycle models the iterative nature of clinical consultation itself.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Node definitions as closures (lines 1045--1177):} Each node is defined as a Python function that closes over the agent instances (\texttt{doctor\_agent}, \texttt{patient\_agent}, \texttt{meas\_agent}) and their respective engine references (\texttt{doc\_eng}, \texttt{pat\_eng}). This allows the StateGraph to be rebuilt fresh for each scenario while maintaining correct agent bindings.
+
+\textbf{doctor\_reflection\_node (lines 1045--1062):} Calls \texttt{doctor\_agent.reflect\_metacognition()}, appends the result to \texttt{differential\_trajectory}, and returns the updated differential and trajectory. Does not modify \texttt{turn\_count} or \texttt{last\_doctor\_message}.
+
+\textbf{doctor\_speaker\_node (lines 1064--1113):} Checks if this is the final turn (\texttt{turn\_count >= total\_inferences - 1}). If so, activates forced diagnosis mode. Logs the doctor's message with a timestamp and the current differential to \texttt{full\_dialogue}. Increments \texttt{turn\_count} and sets \texttt{diagnosis\_ready} flag.
+
+\textbf{patient\_node (lines 1115--1135):} Calls \texttt{patient\_agent.inference\_patient()} with the doctor's last message. Also appends the patient response to the measurement agent's history (\texttt{meas\_agent.add\_hist(msg)}) so the measurement agent has conversational context.
+
+\textbf{measurement\_node (lines 1137--1165):} Extracts the test name using \texttt{\_extract\_test\_name()} regex, calls \texttt{meas\_agent.inference\_measurement()}, and appends the test name to \texttt{tests\_ordered} for the Test Rationality metric. Also updates patient agent history.
+
+\textbf{route\_doctor (lines 1167--1177):} Pure function, no side effects. Three-way conditional: END if done, ``measurement'' if REQUEST TEST detected, ``patient'' otherwise. Uses simple string matching (\texttt{``REQUEST TEST'' in msg.upper()}).
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Now that you understand the architecture, let me show you how we measure the quality of reasoning---not just the final outcome, but the process itself.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} What prevents infinite cycling? \\
+\textbf{A1:} Two mechanisms. First, the \texttt{turn\_count} in ClinicalState is incremented by the doctor\_speaker node and checked by \texttt{route\_doctor()}---once it hits 10, the graph routes to END. Second, if the Doctor emits ``DIAGNOSIS READY'' at any turn, \texttt{diagnosis\_ready} is set to True and the graph terminates. The worst case is exactly 10 full cycles. \\[6pt]
+\textbf{Q2:} Why does the measurement node use the patient engine instead of the doctor engine? \\
+\textbf{A2:} The Measurement Agent is a test result reader, not a medical reasoner. Using the patient/generalist engine (Mistral-7B) keeps it architecturally separate from the Doctor and avoids any leakage of the Doctor's domain-specific reasoning biases into test result interpretation. This is part of the Cognitive Asymmetry design.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 14: PROCESS-ORIENTED CLINICAL METRICS
+% ===========================================================================
+\section{Slide 14: Process-Oriented Clinical Metrics}
+
+\subsection*{Timing}
+\textit{Target: 2 minutes | Cumulative: 24.5 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[MAKE EYE CONTACT] This is where the thesis moves beyond what anyone else has done in clinical LLM evaluation. [PAUSE]
+
+Terminal accuracy---did the model get the diagnosis right or wrong---is necessary but dangerously insufficient. A model that orders an MRI before checking blood pressure is unsafe, even if it gets the right answer. A model that changes its hypothesis every single turn is unstable, even if it eventually stumbles onto the correct diagnosis. [PAUSE]
+
+[POINT TO SLIDE] I formulated three process-based metrics within the \texttt{ClinicalTrajectoryEvaluator}. [PAUSE]
+
+[POINT TO FIRST BULLET] First: Diagnostic Stability, or DS. This measures hypothesis thrashing. I compute the average Jaccard similarity between consecutive differential diagnoses across all turns. Mathematically: $DS = \frac{1}{T-1} \sum_{t=1}^{T-1} \frac{|\text{DDx}_t \cap \text{DDx}_{t+1}|}{|\text{DDx}_t \cup \text{DDx}_{t+1}|}$. A DS close to 1.0 means the model is logically anchoring and refining. A DS close to 0 means erratic switching between unrelated hypotheses. [PAUSE]
+
+[POINT TO SECOND BULLET] Second: Test Rationality, or TR. This is a binary compliance check: did the model order at least one basic investigation---vitals, CBC, blood pressure---before requesting anything expensive or invasive like an MRI or biopsy? If not, TR equals zero. This mirrors real clinical guidelines where basic workup must precede advanced imaging. [PAUSE]
+
+[POINT TO THIRD BULLET] Third: Information Efficiency, or IE. This is the ratio of unique differential hypotheses explored per turn. Higher IE means the model is efficiently exploring the hypothesis space rather than stalling or repeating itself. [PAUSE]
+
+[SLOW DOWN] Together, these three metrics reveal dangerous reasoning patterns that binary accuracy completely masks. I will show you exactly how powerful this is when we look at the bias experiments.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{ClinicalTrajectoryEvaluator class (agentic\_clinic\_v2.py, lines 404--499):}
+
+\textbf{DS formula implementation (lines 426--451):}
+\begin{enumerate}
+  \item Iterate over consecutive pairs of differential snapshots from \texttt{differential\_trajectory}
+  \item For each pair, compute Jaccard similarity: $J(A, B) = |A \cap B| / |A \cup B|$
+  \item Handle edge cases: if both sets empty $\to$ 1.0; if one empty $\to$ 0.0
+  \item Return the mean across all consecutive pairs
+\end{enumerate}
+The sets are constructed from lowercase-stripped diagnosis strings: \texttt{set(d.lower().strip() for d in differential\_trajectory[i])}.
+
+\textbf{DS limitation---synonymy problem:} The Jaccard computation uses exact string matching. ``Myocardial Infarction'' and ``Heart Attack'' are treated as different diagnoses, artificially lowering DS even when the model's reasoning is stable. A future fix would use semantic cosine similarity via BioBERT embeddings.
+
+\textbf{TR formula implementation (lines 453--472):} Maintains a boolean \texttt{had\_basic\_prior}. Iterates through \texttt{tests\_ordered} chronologically. If an advanced test is detected before any basic test, returns 0.0 immediately. Basic tests: \{cbc, bmp, vitals, blood pressure, temperature, x-ray, ecg, urinalysis, blood glucose, pulse oximetry, chest x-ray\}. Advanced tests: \{mri, ct, biopsy, endoscopy, lumbar puncture, pet scan, bronchoscopy, angiography, bone marrow biopsy\}.
+
+\textbf{TR limitation---zero-test edge case:} If the model never orders any test (premature closure), TR returns 1.0 by default. This is a false positive---a model that guesses without investigation should be penalised, not rewarded. Future work should condition TR on $N_{\text{tests}} \geq 1$.
+
+\textbf{IE formula implementation (lines 474--480):} Simply \texttt{num\_symptoms\_gathered / turn\_count}. Currently, \texttt{num\_symptoms\_gathered} is computed as \texttt{len(tests\_ordered) + turn\_count}, which conflates test count with turn count. A refined version should count only unique, clinically relevant information points.
+
+\textbf{Metric computation timing:} All three metrics are computed offline after each scenario completes, using the accumulated \texttt{ClinicalState} trajectory data (lines 1230--1235 in main).
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{These metrics become especially powerful when we introduce controlled distortions. Let me show you how I injected cognitive biases to stress-test the models.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Isn't DS flawed because it uses exact string matching instead of semantic similarity? \\
+\textbf{A1:} Yes, and I acknowledge this limitation explicitly in the thesis (Section 7.6). The current DS metric penalises valid synonymous terminology. A necessary evolution is transitioning to semantic cosine similarity using clinical embeddings like BioBERT. However, even with exact matching, the relative patterns are robust: the E5 confirmation bias DS of 0.88 versus E4 recency bias DS of 0.45 clearly distinguishes the two failure modes. \\[6pt]
+\textbf{Q2:} How is Test Rationality defined for scenarios where no tests are ordered? \\
+\textbf{A2:} Currently, TR defaults to 1.0 when no tests are ordered. I acknowledge this is a limitation---a model that guesses without investigation should not receive a perfect rationality score. Future work must condition TR on at least one test being ordered. \\[6pt]
+\textbf{Q3:} Are these metrics validated against clinical standards? \\
+\textbf{A3:} They are inspired by clinical reasoning literature---particularly the concept of premature diagnostic closure and guideline-concordant test ordering. However, they have not been formally validated against expert clinical ratings. Cross-validation against board-certified physician annotations would strengthen the metrics but is beyond the scope of this thesis.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 15: STRUCTURED COGNITIVE BIAS INJECTIONS
+% ===========================================================================
+\section{Slide 15: Structured Cognitive Bias Injections}
+
+\subsection*{Timing}
+\textit{Target: 1.5 minutes | Cumulative: 26 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[MAKE EYE CONTACT] Now we come to one of the most important questions in this thesis: can LLMs mimic dangerous human cognitive errors? [PAUSE]
+
+If we are going to deploy these models in clinical settings, we need to know whether they are susceptible to the same biases that cause real doctors to make mistakes. [PAUSE]
+
+[POINT TO SLIDE] I injected two ecologically valid distortions into the \texttt{ClinicalState}. [PAUSE]
+
+[POINT TO FIRST BULLET] First: Recency Bias with $k$ equals 5. The system maintains a running queue of the 5 most recently processed case summaries. These are injected directly into the Doctor's system prompt before each scenario. This mimics a real-world phenomenon: an emergency room physician who has just seen three cardiac cases in a row becomes biased toward cardiac diagnoses for the next patient, regardless of presenting symptoms. [PAUSE]
+
+The mechanism is not arbitrary---it exploits the transformer's natural attention dynamics. Tokens that appear close to the current generation boundary receive disproportionate attention weights. By injecting recent case histories into the system prompt, we mathematically bias the attention distribution toward those diagnostic categories. [PAUSE]
+
+[POINT TO SECOND BULLET] Second: Confirmation Bias. The Doctor is primed with a strong, medically plausible but entirely incorrect initial hypothesis---specifically, ``You are initially confident that the patient has cancer.'' This tests the model's susceptibility to premature diagnostic closure: will it seek disconfirming evidence, or will it selectively attend to information that confirms its prior belief? [PAUSE]
+
+[SLOW DOWN] I will show you the results shortly, and they are alarming.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Recency bias implementation (DoctorAgent.\_recency\_bias\_prompt(), agentic\_clinic\_v2.py lines 653--666):} If \texttt{recent\_cases} is populated, the method constructs: ``Your most recent patients were: 1. [case summary] 2. [case summary] ... These encounters strongly influence your current judgement.'' The case summaries are generated by \texttt{summarize\_case\_for\_recency()} (lines 149--154) which formats as ``Presentation: [patient info] | Diagnosis: [ground truth].'' Only the last $k=5$ cases are kept (\texttt{MAX\_RECENT\_CASES = 5}, line 58).
+
+\textbf{Case memory persistence (main loop, lines 1272--1276):} After each scenario, \texttt{summarize\_case\_for\_recency(scenario)} is called and appended to \texttt{recent\_case\_summaries}. If the list exceeds 5 entries, the oldest is popped. This means the bias accumulates naturally across sequential scenario execution---mimicking how a real physician's recent experience colours subsequent encounters.
+
+\textbf{Confirmation bias implementation (DoctorAgent.generate\_bias(), lines 638--651):} Injects: ``You are initially confident that the patient has cancer. This affects how you interact with the patient. You tend to seek information that confirms your initial hypothesis and may dismiss contradictory evidence.'' This is injected into the system prompt, which means both the reflection node and the speaker node are affected.
+
+\textbf{Patient-side bias injection (PatientAgent.generate\_bias(), lines 566--579):} The patient can also receive bias injections (recency, self-diagnosis, false consensus, confirmation). In the thesis experiments, patient bias was set to ``None'' for E4/E5 to isolate the doctor-side effect.
+
+\textbf{Why ``cancer'' as the confirmation bias anchor:} Cancer is medically plausible across virtually all presenting scenarios (weight loss, fatigue, pain can all be cancer-related), making it a strong anchor that the model must actively work to overcome. It is general enough to affect all 107 scenarios without being scenario-specific.
+
+\textbf{Expected attention mechanism:} In a transformer with $L$ layers and $H$ attention heads, the system prompt tokens receive attention throughout the entire generation. Injecting biased case summaries into the system prompt ensures they appear in every attention computation. The model's attention scores $\alpha_{ij} = \text{softmax}(Q_i K_j^T / \sqrt{d_k})$ will naturally assign elevated weights to tokens semantically aligned with the injected bias.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Before showing the bias results, let me describe one more architectural innovation: the Dynamic LoRA adapter routing that addresses catastrophic forgetting.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Is injecting ``you are confident the patient has cancer'' ecologically valid? \\
+\textbf{A1:} It is a controlled operationalisation of confirmation bias, not a perfect ecological replica. Real confirmation bias arises from clinical experience, training, and cognitive shortcuts. Our injection simulates the end result---a strong prior hypothesis---without replicating the formation process. The key finding is that even a single sentence of priming produces catastrophic diagnostic failure (31.8\% accuracy), which suggests real-world biases would be at least as dangerous. \\[6pt]
+\textbf{Q2:} Why $k=5$ for recency bias? Why not $k=1$ or $k=10$? \\
+\textbf{A2:} $k=5$ was chosen as a clinically plausible window---a physician might see 3--8 patients in a shift. At $k=1$, the signal is too weak to reliably bias the model. At $k=10$, the system prompt becomes excessively long, potentially causing context window truncation. $k=5$ balances ecological validity with practical token constraints. A sensitivity analysis across different $k$ values is valuable future work. \\[6pt]
+\textbf{Q3:} Did you test bias mitigation strategies? \\
+\textbf{A3:} Not in this thesis. Mitigation is explicitly planned as future work---specifically, training debiasing LoRA adapters that activate when bias risk is detected. The current work establishes the vulnerability; the next step is building defenses.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 16: DYNAMIC LoRA ADAPTER ROUTING
+% ===========================================================================
+\section{Slide 16: Dynamic LoRA Adapter Routing}
+
+\subsection*{Timing}
+\textit{Target: 2 minutes | Cumulative: 28 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO SLIDE] Let me now describe how I resolved the catastrophic forgetting problem that plagued Phase 1. [PAUSE]
+
+Recall that in Phase 1, medically fine-tuned models like BioGPT and JSL-Med performed worse than the generalist Mistral because fine-tuning on narrow medical QA data destroyed their conversational logic. The traditional approach is a trade-off: either you have medical knowledge or you have conversational ability. [PAUSE]
+
+[SLOW DOWN] My approach decouples these capabilities at the adapter level. Instead of modifying the base model's weights, I train two lightweight Low-Rank Adaptation adapters---each approximately 25 megabytes. [PAUSE]
+
+[POINT TO SECOND BULLET] The Reasoning Adapter operates at temperature 0.1 and is activated strictly during the \texttt{doctor\_reflection} node. It steers the model's latent probability distribution toward structured diagnostic enumeration---clean JSON arrays of differential diagnoses. [PAUSE]
+
+[POINT TO THIRD BULLET] The Dialogue Adapter operates at temperature 0.7 and is activated strictly during the \texttt{doctor\_speaker} node. It preserves empathetic, syntactically fluent conversational patterns. [PAUSE]
+
+[POINT TO FOURTH BULLET] The key engineering insight: adapter swapping is a pointer operation. When the LangGraph DCG transitions from the reflection node to the speaker node, it calls \texttt{model.set\_adapter("dialogue")} which simply redirects which low-rank matrices $BA$ are added to the frozen base weights $W_0$. The swap takes less than 1 millisecond. There is no model reloading, no VRAM reallocation. [PAUSE]
+
+[MAKE EYE CONTACT] The combined VRAM overhead of both adapters is approximately 50 megabytes. Compared to the 3.8 gigabytes of the base model, this is negligible. And the result---as I will show in the next slides---is a 4.6 percentage point accuracy improvement.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{LoRA theory (Hu et al., 2022):} Standard fine-tuning updates all parameters: $W' = W_0 + \Delta W$, where $\Delta W \in \mathbb{R}^{d \times d}$ is a full-rank update matrix. LoRA constrains $\Delta W = BA$ where $B \in \mathbb{R}^{d \times r}$ and $A \in \mathbb{R}^{r \times d}$ with rank $r \ll d$. For $r=16$ and $d=4096$ (Mistral-7B hidden dim), each LoRA matrix pair has $16 \times 4096 \times 2 = 131,072$ parameters per attention projection. With 4 projection matrices (q, k, v, o) across 32 layers: $131,072 \times 4 \times 32 \approx 16.8M$ trainable parameters per adapter---roughly 0.24\% of the 7B base model.
+
+\textbf{Training pipeline (train\_lora\_adapters.py):}
+\begin{itemize}
+  \item \textbf{Data generation (lines 38--166):} SDG pipeline converts OSCE scenarios into training pairs. Reasoning data: patient history $\to$ JSON differential array. Dialogue data: patient statement $\to$ empathetic doctor follow-up.
+  \item \textbf{LoRA config (lines 315--322):} $r=16$, $\alpha=32$, target modules = [q\_proj, k\_proj, v\_proj, o\_proj], dropout = 0.05, bias = none, task = CAUSAL\_LM.
+  \item \textbf{Training (lines 350--378):} QLoRA setup: base model in NF4, adapters in bf16. SFTTrainer with AdamW, lr=$2 \times 10^{-4}$, cosine schedule, 10\% warmup, 3 epochs, batch size 4 with 4-step gradient accumulation.
+  \item \textbf{Data separation:} Adapters trained on NEJM scenarios; evaluation uses independent 107 MedQA scenarios. No train-test contamination.
+\end{itemize}
+
+\textbf{Dynamic routing in agentic\_clinic\_future\_scope.py:}
+\begin{itemize}
+  \item \texttt{reflect\_metacognition()} (line 721): calls \texttt{model\_class.model.set\_adapter("reasoning")} before JSON generation
+  \item \texttt{inference\_doctor()} (line 756): calls \texttt{model\_class.model.set\_adapter("dialogue")} before spoken turn
+  \item Patient/Measurement nodes: calls \texttt{model\_class.model.disable\_adapter()} to use base weights only
+\end{itemize}
+
+\textbf{Adapter swap cost:} \texttt{set\_adapter()} in PEFT is a pointer swap of the active $BA$ matrices in the model's forward pass hooks. No weight copying, no VRAM reallocation. Measured latency: $<$1ms on H100.
+
+\textbf{Why $r=16$:} Hu et al.\ showed diminishing returns beyond $r=16$ for most tasks. $r=8$ gave slightly lower quality in preliminary testing; $r=32$ doubled adapter size without measurable gain. $r=16$ with $\alpha=32$ (ratio $\alpha/r = 2$) is the standard recommendation.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Now let me show you the experimental results. We will start with the baseline and foundational outcomes from experiments E1 through E3.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Why not fine-tune the full model instead of using LoRA? \\
+\textbf{A1:} Full fine-tuning of a 7B model requires approximately 56 GB of VRAM for training (weights + gradients + optimizer states). With LoRA, the base model stays frozen in NF4 (3.8 GB) and only the adapter parameters (16.8M params $\approx$ 33 MB in bf16) require gradients. This makes training feasible on a single GPU. More importantly, full fine-tuning is precisely what causes catastrophic forgetting---by keeping the base weights frozen and training separate task-specific adapters, we avoid the forgetting problem entirely. \\[6pt]
+\textbf{Q2:} How do you ensure no train-test contamination between the adapter training data and the evaluation scenarios? \\
+\textbf{A2:} The adapters were trained strictly on NEJM case scenarios. All experimental evaluations (E1--E6) use the independent 107 MedQA scenarios exclusively. The NEJM and MedQA datasets have no overlapping cases. \\[6pt]
+\textbf{Q3:} Could you add more adapters for other tasks? \\
+\textbf{A3:} Yes, and this is exactly the future work direction. I propose debiasing adapters for recency and confirmation bias resilience, creating a four-adapter routing manifold. The LangGraph DCG would select the active adapter based on both the current node and detected bias risk signals---a form of dynamic cognitive resource allocation.
+\end{qabox}
+

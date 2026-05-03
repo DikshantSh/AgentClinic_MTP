@@ -1,0 +1,84 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+% ============================================================
+% THEME & COLORS
+% ============================================================
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+\definecolor{iitkgpblue}{RGB}{0,51,102}
+\definecolor{accentteal}{RGB}{0,128,128}
+\definecolor{lightbg}{RGB}{240,248,255}
+\definecolor{alertred}{RGB}{192,57,43}
+\definecolor{successgreen}{RGB}{39,174,96}
+\definecolor{warnorange}{RGB}{243,156,18}
+
+\setbeamercolor{palette primary}{bg=iitkgpblue,fg=white}
+\setbeamercolor{palette secondary}{bg=accentteal,fg=white}
+\setbeamercolor{palette tertiary}{bg=iitkgpblue,fg=white}
+\setbeamercolor{title}{fg=white,bg=iitkgpblue}
+\setbeamercolor{frametitle}{fg=white,bg=iitkgpblue}
+\setbeamercolor{block title}{bg=accentteal,fg=white}
+\setbeamercolor{block body}{bg=lightbg}
+\setbeamercolor{item}{fg=accentteal}
+\setbeamercolor{alerted text}{fg=alertred}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{
+  \leavevmode\hbox{%
+    \begin{beamercolorbox}[wd=.33\paperwidth,ht=2.5ex,dp=1ex,center]{palette primary}
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.44\paperwidth,ht=2.5ex,dp=1ex,center]{palette secondary}
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.23\paperwidth,ht=2.5ex,dp=1ex,right]{palette primary}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}
+}
+
+% ============================================================
+% PACKAGES
+% ============================================================
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, fit, backgrounds}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fontenc}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{multirow}
+\usepackage{pifont}
+\usepackage{wrapfig}
+\graphicspath{{Pictures/}}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{iitkgpblue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{accentteal},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{iitkgpblue!30},
+  backgroundcolor=\color{lightbg},
+  showstringspaces=false,
+}
+
+% ============================================================
+% TITLE INFO
+% ============================================================
+\title[AgentClinic: LLMs for Clinical Decision-Making]{Evaluating Large Language Models for\\Clinical Decision-Making Using\\Multi-Agent Simulations}
+\author[Dikshant Sharma]{Dikshant Sharma}
+\institute[IIT Kharagpur]{Department of Computer Science \& Engineering\\Indian Institute of Technology Kharagpur\\[4pt]\small M.Tech in Artificial Intelligence \quad|\quad 2025--2026\\[6pt]\includegraphics[height=1.2cm]{logo}}
+\date{April 2026}
+
+\begin{document}
+
+\input{slides_part2}
+\end{document}

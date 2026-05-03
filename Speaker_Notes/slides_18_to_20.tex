@@ -1,0 +1,158 @@
+
+
+% ===========================================================================
+%  SLIDE 18: DISCUSSION — SPECIALISATION VS ALIGNMENT
+% ===========================================================================
+\section{Slide 18: Discussion --- Specialisation vs.\ Alignment}
+
+\subsection*{Timing}
+\textit{Target: 1.5 minutes | Cumulative: 36 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO SLIDE] Let me synthesise what these results mean in the broader context. [PAUSE]
+
+[POINT TO FIRST BULLET] The trade-off between domain specialisation and instruction alignment is avoidable. E6 proves this definitively. The traditional assumption is that you must choose: either fine-tune for medical knowledge and lose conversational ability, or keep a generalist model and sacrifice domain expertise. Dynamic LoRA routing shows that these capabilities can coexist without interference---you simply activate the right adapter for the right task. [PAUSE]
+
+[POINT TO SECOND BULLET] [SLOW DOWN] Evaluating process is mandatory, not optional. Accuracy alone is dangerous. A model exhibiting high terminal accuracy but generating Diagnostic Stability signatures indicative of premature hypothesis closure is wildly unsafe for real-world deployment. The process metrics I introduced---DS, TR, IE---are not academic curiosities. They are safety necessities. [PAUSE]
+
+[POINT TO THIRD BULLET] [MAKE EYE CONTACT] And finally: open-source viability. Local, quantised LLMs orchestrated across a LangGraph topology represent a scalable, highly secure alternative to proprietary cloud-hosted API ecosystems. Every experiment in this thesis ran on a single GPU, entirely offline, with no data leaving the machine. For healthcare settings where patient data privacy is paramount, this architecture is not just preferable---it is likely necessary.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Specialisation vs alignment resolution:} E2 (JSL-MedMistral, domain-specialised) = 50.5\%. E3 (Llama-3.1, instruction-aligned) = 51.4\%. E6 (JSL-MedMistral + Dynamic LoRA) = 55.1\%. E6 surpasses both, proving that the trade-off is an artifact of monolithic weight modification, not an intrinsic LLM limitation.
+
+\textbf{The monolithic update problem:} Standard SFT overwrites attention patterns across ALL layers. In a 32-layer transformer, early layers capture syntactic patterns (word order, grammar), middle layers capture semantic relationships, and later layers capture task-specific reasoning. Medical SFT on QA pairs primarily updates later layers for diagnostic pattern matching, but the gradient signal propagates backward, degrading syntactic patterns in earlier layers. LoRA confines updates to low-rank subspaces of the attention projections, preserving the base model's syntactic and conversational capabilities.
+
+\textbf{Process metric mandate:} The E5 ``confidently wrong'' pattern (DS=0.88, Acc=31.8\%) is the strongest argument for mandatory process-level reporting. Without DS, E5 would appear as simply a low-accuracy model. With DS, we can identify the specific failure mode: premature diagnostic closure. This distinction has direct implications for clinical safety.
+
+\textbf{Open-source security argument:} Using local models eliminates: (1) data transmission to third-party APIs, (2) dependency on provider uptime and pricing, (3) inability to audit model weights and behaviour, (4) regulatory exposure under HIPAA/GDPR for cloud data processing. The NF4 quantisation makes local deployment feasible on hardware available to most research hospitals.
+
+\textbf{Cost comparison:} Running 107 scenarios at $\sim$30 LLM calls per scenario (10 turns $\times$ 3 agents) = $\sim$3,210 inference calls per experiment. With GPT-4 at $\sim$\$0.03/call, this would cost $\sim$\$96 per experiment, or $\sim$\$576 for all 6 experiments. Local H100 inference costs only electricity and amortised hardware ($\sim$\$2--5 total per experiment).
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Let me now summarise the key conclusions and contributions of this thesis.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} Is open-source viability limited by the accuracy gap with proprietary models? \\
+\textbf{A1:} Currently, yes---GPT-4 likely achieves higher absolute accuracy. But the gap is narrowing rapidly, and my framework provides the infrastructure to measure and improve open-source models systematically. Moreover, proprietary models cannot be audited, biased in controlled ways for safety testing, or deployed in privacy-sensitive clinical environments. \\[6pt]
+\textbf{Q2:} Do you envision these process metrics becoming part of clinical AI regulation? \\
+\textbf{A2:} I believe they should. Current clinical AI evaluation guidelines focus on outcome accuracy and dataset bias. Process-level metrics like DS, TR, and IE would add a behavioural safety dimension that is currently missing. The EU AI Act's requirements for ``high-risk AI systems'' in healthcare could naturally incorporate trajectory-aware evaluation.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 19: CONCLUSION
+% ===========================================================================
+\section{Slide 19: Conclusion}
+
+\subsection*{Timing}
+\textit{Target: 1.5 minutes | Cumulative: 37.5 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[MAKE EYE CONTACT] Let me now bring everything together. [PAUSE]
+
+[POINT TO FIRST BULLET] AgentClinic v2 successfully moves clinical AI evaluation away from static factual recall and towards dynamic, trajectory-aware simulation. We are no longer asking ``does the model know the right answer?''---we are asking ``does the model reason safely to get there?'' [PAUSE]
+
+[POINT TO SECOND BULLET] I implemented heterogeneous multi-engine isolation to resolve the mathematically demonstrated Lexical Leakage vulnerability. By assigning different model architectures to different agent roles and enabling this through NF4 quantisation, we ensured that no implicit information transfer can inflate evaluation metrics. [PAUSE]
+
+[POINT TO THIRD BULLET] The Latent Metacognitive Reflection Node makes LLM reasoning observable and quantifiable. For the first time in clinical LLM evaluation, we can trace how a model's differential diagnosis evolves turn by turn and measure its stability, rationality, and efficiency mathematically. [PAUSE]
+
+[POINT TO FOURTH BULLET] [SLOW DOWN] While open-source models achieved peaks of 55.1 percent diagnostic accuracy with Dynamic LoRA routing, their severe susceptibility to confirmation and recency bias indicates they are not yet ready for direct, unmonitored clinical deployment. [PAUSE]
+
+[MAKE EYE CONTACT] That last point is not a failure---it is the thesis working exactly as intended. We built a framework that can rigorously demonstrate where these models break, so that future work can fix them.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{Key contributions summary:}
+\begin{enumerate}
+  \item \textbf{C1---Lexical Leakage identification:} Identified, named, and resolved a systematic vulnerability in homogeneous multi-agent architectures where shared embedding manifolds enable implicit information transfer between agents with information asymmetry.
+  \item \textbf{C2---LangGraph DCG architecture:} Replaced ad-hoc loop orchestration with a formally defined Directed Cyclic Graph state machine, enabling deterministic execution, complete trajectory logging, and process-oriented evaluation.
+  \item \textbf{C3---Metacognitive Reflection Node:} Introduced a hidden reasoning checkpoint that forces structured differential diagnosis generation before each spoken turn, making latent LLM reasoning observable and quantifiable.
+  \item \textbf{C4---Process-oriented metrics:} Defined DS, TR, and IE as quantitative measures of reasoning quality that go beyond binary accuracy and reveal dangerous failure modes invisible to outcome-only evaluation.
+  \item \textbf{C5---Dynamic LoRA routing:} Demonstrated that task-specific adapter routing resolves the specialisation-alignment trade-off, achieving the highest accuracy in the study (55.1\%) with negligible computational overhead.
+\end{enumerate}
+
+\textbf{Thesis narrative arc:} Crisis in clinical AI evaluation $\to$ Phase 1 attempt with fundamental flaws $\to$ Discovery of Lexical Leakage $\to$ Complete Phase 2 rebuild $\to$ Novel architecture + metrics $\to$ Rigorous experiments $\to$ Key findings including bias vulnerabilities $\to$ Dynamic LoRA as partial solution $\to$ Limitations acknowledged $\to$ Clear future work directions.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{Finally, let me outline the future work directions that build directly on this foundation.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} What is your single strongest contribution? \\
+\textbf{A1:} The Metacognitive Reflection Node. It transforms clinical LLM evaluation from a black-box accuracy check into a transparent, trajectory-aware analysis. Every subsequent contribution---the process metrics, the bias analysis, the LoRA routing---depends on the reflection node making reasoning observable. Without it, none of the process-level findings would be possible. \\[6pt]
+\textbf{Q2:} Are these models ready for any form of clinical deployment? \\
+\textbf{A2:} Not for unmonitored deployment. The bias vulnerability (31.8\% under confirmation bias) is disqualifying for direct patient care. However, they show promise as clinical decision support tools---assisting physicians rather than replacing them---particularly if combined with the process metrics as real-time safety monitors that flag dangerous reasoning patterns. \\[6pt]
+\textbf{Q3:} How does this compare to the state of the art? \\
+\textbf{A3:} The state of the art for open-source interactive clinical evaluation is sparse. AgentClinic (the original framework) used homogeneous architectures without process metrics. My work extends it with architectural fixes (heterogeneous engines, reflection node), evaluation methodology (DS, TR, IE), bias stress-testing (E4, E5), and performance enhancement (Dynamic LoRA). No comparable open-source framework offers all four dimensions.
+\end{qabox}
+
+
+
+% ===========================================================================
+%  SLIDE 20: FUTURE WORK
+% ===========================================================================
+\section{Slide 20: Future Work}
+
+\subsection*{Timing}
+\textit{Target: 2 minutes | Cumulative: 39.5 minutes}
+
+\subsection*{Spoken Script}
+\begin{spokenbox}
+[POINT TO SLIDE] The AgentClinic v2 framework serves not merely as an evaluator, but as an advanced foundation for post-training alignment. Let me outline two concrete future directions that build directly on the infrastructure I have already built. [PAUSE]
+
+[POINT TO FIRST BULLET] First: Direct Preference Optimisation, or DPO. Currently, medical LLMs are trained on static question-answer pairs---they learn what the right diagnosis is, but not the safe path to get there. I propose deploying a Process Reward Model that evaluates complete clinical consultation trajectories. Given two paths---Path A, where the model guesses prematurely with low Test Rationality, and Path B, where it follows systematic basic-before-advanced investigation with high Diagnostic Stability---DPO would train the model's behavioural policy to prefer Path B. [PAUSE]
+
+[SLOW DOWN] The infrastructure for this already exists. The \texttt{ClinicalTrajectoryEvaluator} computes DS and TR automatically for every trajectory. These can serve directly as the preference signal for DPO training. [PAUSE]
+
+[POINT TO SECOND BULLET] Second: Self-Play AI Feedback. Generating expert human-annotated clinical dialogues is expensive and does not scale. But AgentClinic itself is a self-contained reinforcement learning environment. We can let heterogeneous agents simulate thousands of cases through self-play, using DS and TR as programmatic reward signals. Trajectories that score highly are archived; those that score poorly are discarded. This creates a self-improving clinical agent without the overhead of human annotation. [PAUSE]
+
+[MAKE EYE CONTACT] Both directions leverage the exact framework and metrics developed in this thesis. The work presented here is not an endpoint---it is the foundation for the next generation of clinically safe, trajectory-aware LLM training.
+\end{spokenbox}
+
+\subsection*{Technical Deep-Dive (Internal Reference)}
+{\color{techgray}
+\textbf{DPO (Rafailov et al., 2023):} Eliminates the need for a separate reward model by directly optimising the policy on preference pairs. The loss function:
+$\mathcal{L}_{\text{DPO}} = -\log \sigma\left(\beta \log \frac{\pi_\theta(y_w | x)}{\pi_{\text{ref}}(y_w | x)} - \beta \log \frac{\pi_\theta(y_l | x)}{\pi_{\text{ref}}(y_l | x)}\right)$
+where $y_w$ is the preferred trajectory (high DS, high TR) and $y_l$ is the dispreferred trajectory (low DS, premature closure). $\beta$ controls the strength of the KL constraint from the reference policy.
+
+\textbf{How AgentClinic enables DPO:} Each completed scenario produces a full trajectory with DS, TR, and IE scores. Scenarios with DS $> 0.6$ and TR $= 1.0$ form the ``preferred'' set; scenarios with DS $< 0.4$ or TR $= 0.0$ form the ``dispreferred'' set. The full dialogue transcripts serve as the trajectory sequences for DPO training.
+
+\textbf{RLAIF (Reinforcement Learning from AI Feedback):} Instead of human annotators, the \texttt{ClinicalTrajectoryEvaluator} itself acts as the reward function. The reward signal: $R = \alpha \cdot \text{DS} + \beta \cdot \text{TR} + \gamma \cdot \mathbb{1}[\text{correct}]$ where the weights $\alpha, \beta, \gamma$ prioritise process quality over outcome accuracy.
+
+\textbf{Debiasing adapters (proposed):} Train specialised LoRA adapters on trajectory pairs where the model successfully resisted bias injections. A recency-debiasing adapter trains on cases where the model maintained stable hypotheses despite injected case memories. A confirmation-debiasing adapter trains on cases where the model updated its differential in response to contradictory evidence. Combined with the existing reasoning and dialogue adapters, this creates a four-adapter routing manifold.
+
+\textbf{Multimodal extension:} Replace the text-only \texttt{measurement\_node} with a VLM (e.g., LLaVA-Med, Med-Gemini) that can return and interpret raw radiographic images, ECG waveforms, and pathology slides. The LangGraph architecture supports this naturally---the measurement node is already a separate graph node that can be replaced with a multimodal pipeline without modifying the rest of the DCG.
+
+\textbf{Scalability:} The self-play pipeline could generate thousands of synthetic consultation trajectories per day on an H100 cluster. With 107 scenarios $\times$ multiple model pairings $\times$ multiple bias conditions, the combinatorial space for trajectory generation is vast. This data could be used not just for DPO but also for supervised fine-tuning with trajectory-aware loss functions.
+}
+
+\subsection*{Transition to Next Slide}
+{\color{transgreen}
+\textit{That concludes my presentation. I would like to thank the committee for their time and attention. I am happy to take any questions.}
+}
+
+\subsection*{Anticipated Examiner Questions}
+\begin{qabox}
+\textbf{Q1:} How feasible is the DPO pipeline given your current infrastructure? \\
+\textbf{A1:} Highly feasible. The trajectory data is already being generated and logged by the existing evaluation pipeline. The \texttt{ClinicalTrajectoryEvaluator} provides the preference signals. The DPO training step would use the same QLoRA infrastructure from \texttt{train\_lora\_adapters.py}. The main additional effort is curating the preference dataset from existing experiment outputs, which is a data processing task rather than an engineering challenge. \\[6pt]
+\textbf{Q2:} What about multimodal integration---how far away is that? \\
+\textbf{A2:} Architecturally, it is straightforward. The \texttt{measurement\_node} in the LangGraph DCG is already a modular component. Replacing its text-only response with a VLM that processes images would require: (1) loading a VLM like LLaVA-Med alongside the text models, (2) modifying the measurement node to accept and return image embeddings, and (3) updating the ClinicalState to store multimodal data. The main challenge is VRAM---a VLM alongside three text models may exceed single-GPU capacity, requiring model parallelism or quantisation innovations. \\[6pt]
+\textbf{Q3:} Could this framework be used to evaluate clinical AI systems other than LLMs? \\
+\textbf{A3:} Yes. The LangGraph DCG and ClinicalTrajectoryEvaluator are model-agnostic. Any system that can accept text prompts and generate text responses can be plugged into the Doctor node. This includes retrieval-augmented systems, ensemble models, and even rule-based clinical decision support systems. The process metrics would provide the same trajectory-aware evaluation regardless of the underlying technology.
+\end{qabox}
+
+
+\end{document}

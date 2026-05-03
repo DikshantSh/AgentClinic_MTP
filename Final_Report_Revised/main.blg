@@ -1,0 +1,48 @@
+This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: unsrt.bst
+Database file #1: Bibliography.bib
+Warning--empty journal in pal2022medmcqa
+You've used 18 entries,
+            1791 wiz_defined-function locations,
+            529 strings with 7836 characters,
+and the built_in function-call counts, 4327 in all, are:
+= -- 269
+> -- 393
+< -- 2
++ -- 137
+- -- 119
+* -- 320
+:= -- 788
+add.period$ -- 54
+call.type$ -- 18
+change.case$ -- 18
+chr.to.int$ -- 0
+cite$ -- 19
+duplicate$ -- 179
+empty$ -- 347
+format.name$ -- 119
+if$ -- 902
+int.to.chr$ -- 0
+int.to.str$ -- 18
+missing$ -- 18
+newline$ -- 93
+num.names$ -- 18
+pop$ -- 69
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 70
+stack$ -- 0
+substring$ -- 86
+swap$ -- 34
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 1
+while$ -- 27
+width$ -- 20
+write$ -- 186
+(There was 1 warning)

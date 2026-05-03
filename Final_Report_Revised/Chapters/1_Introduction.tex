@@ -1,0 +1,47 @@
+\chapter{Introduction}
+\label{Chapter1}
+\lhead{Chapter 1. \emph{Introduction}}
+
+
+\section{Background and Motivation}
+
+Over the past decade, large language models (LLMs) have made rapid progress in handling specialised reasoning tasks, and medicine is no exception. Modern LLMs can synthesise clinical guidelines, recall diagnostic criteria, and articulate differential diagnoses with a degree of fluency that makes them appealing as decision-support tools. Naturally, this has drawn attention from both the AI and healthcare communities.
+
+However, clinical reasoning fundamentally differs from answering a medical question. Real encounters with patients are \textit{interactive}, \textit{sequential}, and \textit{uncertain}. Physicians iteratively inquire, evaluate, form hypotheses, refine them, and re-evaluate as new evidence appears. A typical workflow includes history-taking, physical examination, ordering tests, synthesising multimodal evidence, and reasoning under incomplete information. This iterative process is fundamentally different from the one-shot question formats used in benchmarks like MedQA or MedMCQA.
+
+\section{Limitations of Static Benchmarks}
+
+Benchmarks such as MedQA, USMLE step examinations, and PubMedQA test a model's ability to recall facts and apply guidelines to fully structured vignettes. In these tests, all patient history, vital signs, and investigation results are given upfront in a single prompt. While they are useful for gauging baseline medical knowledge, they do not assess the \textit{procedural and interactive} dimension of clinical decision-making. The model never has to ask a clarifying question, identify confounding factors, or selectively acquire evidence. As a result, these benchmarks miss the aspects that matter most in practice: hypothesis formation, adaptive reasoning, and multi-turn dialogue management.
+
+\section{Evolution of the Research}
+
+To address this evaluation gap, the multi-agent LLM simulation paradigm was adopted and substantially extended. The work evolved in two phases.
+
+\textbf{Initial Framework:} A functional multi-agent clinical simulator governed by an ad-hoc \texttt{while}-loop was initially built. Several open-source LLMs (Mistral-7B, Microsoft BioGPT, JSL-Med, and Apollo) were benchmarked, and baseline metrics for diagnostic accuracy and bias susceptibility were established. This initial approach, however, revealed serious architectural limitations---most notably non-deterministic state management and a vulnerability termed \textit{Lexical Leakage}---stemming from the use of homogeneous model instances across all agent roles.
+
+\textbf{Enhanced Framework:} To address these shortcomings, the system was re-architected into \textbf{the enhanced AgentClinic framework}. The orchestration layer was redesigned as a LangGraph Directed Cyclic Graph (DCG) state machine, 4-bit NF4 double quantisation was introduced to support heterogeneous multi-engine configurations on a single GPU, and mathematical process-oriented metrics were formalised around a novel latent metacognitive reflection node.
+
+\section{Problem Statement}
+
+Despite progress in healthcare-focused LLM research, several gaps persist:
+\begin{itemize}
+    \item \textbf{Absence of flexible, interactive frameworks} for evaluating open-source LLMs in realistic diagnostic workflows without relying on proprietary, high-bandwidth APIs (e.g., GPT-4).
+    \item \textbf{Lexical Leakage} in existing open-source multi-agent systems, where using a single set of model weights for both the Doctor and Patient agents allows the Doctor to mathematically infer patient ground-truth representations through shared embedding spaces.
+    \item \textbf{Insufficient process evaluation}: most existing work focuses only on binary diagnostic accuracy, ignoring the cognitive trajectory, stability, and rationality of the LLM's reasoning.
+    \item \textbf{Lack of controlled bias modelling tools} to systematically study how open-source LLMs reproduce human cognitive errors such as confirmation and recency biases.
+\end{itemize}
+
+\section{Contributions}
+
+The primary contributions of this work are:
+\begin{enumerate}
+    \item An analysis of baseline open-source LLM performance in interactive clinical settings using an ad-hoc while-loop simulation, which revealed the phenomenon of Lexical Leakage.
+    \item Identification and mitigation of \textit{Lexical Leakage} through a heterogeneous multi-engine architecture using BitsAndBytes NF4 quantisation.
+    \item A LangGraph-orchestrated state machine with a \textit{latent metacognitive reflection node} that captures reasoning trajectories without contaminating patient-facing dialogue.
+    \item The formulation of three process-oriented clinical metrics: Diagnostic Stability (DS), Test Rationality (TR), and Information Efficiency (IE).
+    \item An experimental suite showing that structured metacognition improves open-source baseline accuracy, along with results for domain-specialised models and cognitive bias vulnerabilities.
+\end{enumerate}
+
+\section{Thesis Organisation}
+
+This thesis is structured as follows. Chapter~2 reviews the relevant literature on medical AI benchmarking, clinical simulation, and cognitive bias. Chapter~3 describes the dataset and the simulated OSCE examination structure. Chapter~4 details the foundational framework and baseline results. Chapter~5 presents the enhanced methodology and full architecture of the enhanced framework. Chapter~6 reports the experimental results and projections. Chapter~7 provides a comprehensive discussion of the findings, and Chapter~8 concludes the thesis with directions for future research.
